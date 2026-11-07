@@ -1,0 +1,37 @@
+# Configuração do gitleaks: regras padrão + regras para dados pessoais brasileiros.
+# O domínio do finapp não precisa de CPF, CNPJ, agência ou conta. Se algum
+# desses aparecer num commit, é vazamento, não fixture.
+title = "finapp"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "cpf-formatado"
+description = "CPF no formato 000.000.000-00"
+regex = '''\b\d{3}\.\d{3}\.\d{3}-\d{2}\b'''
+keywords = ["."]
+
+[[rules]]
+id = "cpf-com-rotulo"
+description = "CPF sem formatação ao lado da palavra CPF"
+regex = '''(?i)\bcpf\b\W{0,10}\d{11}\b'''
+keywords = ["cpf"]
+
+[[rules]]
+id = "cnpj-formatado"
+description = "CNPJ no formato 00.000.000/0000-00"
+regex = '''\b\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}\b'''
+keywords = ["/"]
+
+[[rules]]
+id = "agencia-ou-conta-bancaria"
+description = "Número de agência ou conta bancária ao lado do rótulo"
+regex = '''(?i)\b(ag[eê]ncia|conta(\s+corrente)?|c/c)\b\W{0,10}\d{4,}(-\d)?\b'''
+keywords = ["agencia", "agência", "conta", "c/c"]
+
+[[rules]]
+id = "credenciais-open-finance-preenchidas"
+description = "Credencial da Pluggy com valor atribuído"
+regex = '''PLUGGY_CLIENT_(ID|SECRET)\s*[=:]\s*["']?[A-Za-z0-9-]{8,}'''
+keywords = ["pluggy_client"]

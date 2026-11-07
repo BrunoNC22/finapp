@@ -1,0 +1,40 @@
+# Dependências e build
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+.vite/
+
+# Segredos e configuração de instância — NUNCA versionar
+.env
+.env.*
+!.env.example
+
+# Dados financeiros reais — NUNCA versionar
+data/
+*.ofx
+*.qfx
+*.csv
+*.pdf
+*.xlsx
+*.xls
+*.archive
+*.archive.gz
+*.bson
+dump/
+backups/
+*.luks
+
+# Contexto pessoal para assistentes de IA (fica fora do repo público)
+CLAUDE.local.md
+.claude/settings.local.json
+
+# Logs (podem conter payloads)
+logs/
+*.log
+
+# Editor / SO
+.DS_Store
+.idea/
+*.swp

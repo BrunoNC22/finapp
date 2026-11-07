@@ -1,0 +1,26 @@
+name: finapp
+
+services:
+  mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    # Roda com o dono dos dados do cofre (não como root).
+    user: "${FINAPP_UID:-1000}:${FINAPP_GID:-1000}"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:?defina MONGO_ROOT_USER no .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?defina MONGO_ROOT_PASSWORD no .env}
+    volumes:
+      - type: bind
+        source: ${FINAPP_VAULT_MOUNT:?defina FINAPP_VAULT_MOUNT no .env}/mongo
+        target: /data/db
+        bind:
+          # Se o cofre não estiver montado, o diretório não existe e o Mongo
+          # NÃO sobe, em vez de gravar dados em claro fora do cofre.
+          create_host_path: false
+    networks: [data]
+    # Sem "ports": o Mongo não é acessível fora da rede interna do compose.
+
+networks:
+  # Rede sem saída para a internet; a API entra nela e também numa rede externa.
+  data:
+    internal: true

@@ -1,0 +1,35 @@
+#!/bin/sh
+# Barreiras contra vazamento de dados pessoais e segredos.
+# Ativado por `pnpm install` (script "prepare" → core.hooksPath=.githooks).
+set -eu
+
+fail() {
+  printf '\n\033[31m✖ pre-commit: %s\033[0m\n' "$1" >&2
+  exit 1
+}
+
+# 1) Lista local de termos pessoais (opcional, fora do repositório).
+#    Configure com: git config finapp.denylist /caminho/para/denylist.txt
+#    Um termo por linha; linhas vazias e iniciadas por # são ignoradas.
+denylist=$(git config --get finapp.denylist || true)
+if [ -n "$denylist" ]; then
+  [ -f "$denylist" ] || fail "finapp.denylist aponta para '$denylist', que não existe."
+  patterns=$(mktemp)
+  trap 'rm -f "$patterns"' EXIT
+  grep -v -e '^[[:space:]]*$' -e '^[[:space:]]*#' "$denylist" > "$patterns" || true
+  if [ -s "$patterns" ]; then
+    added=$(git diff --cached -U0 --no-color | grep '^+' | grep -v '^+++' || true)
+    names=$(git diff --cached --name-only)
+    hits=$(printf '%s\n%s\n' "$added" "$names" | grep -o -i -F -f "$patterns" | sort -u || true)
+    if [ -n "$hits" ]; then
+      printf '%s\n' "$hits" | sed 's/^/    /' >&2
+      fail "termos da sua denylist pessoal aparecem no que está sendo commitado (acima)."
+    fi
+  fi
+fi
+
+# 2) Segredos e dados pessoais por padrão (regras em .gitleaks.toml).
+command -v gitleaks >/dev/null 2>&1 \
+  || fail "gitleaks não está instalado. Instale-o antes de commitar (https://github.com/gitleaks/gitleaks)."
+gitleaks git --pre-commit --staged --redact --no-banner --verbose \
+  || fail "gitleaks encontrou possíveis segredos ou dados pessoais."
