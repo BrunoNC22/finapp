@@ -217,7 +217,8 @@ function TopExpenses({
               <div className="rank-main">
                 <span className="rank-title">{t.description}</span>
                 <span className="hint">
-                  {formatDate(t.occurredOn)} · {categories.path(t.category?.id)} · <Badge transaction={t} />
+                  {formatDate(t.occurredOn)} · {categories.path(t.category?.id)}
+                  <Badge transaction={t} />
                 </span>
               </div>
               <Amount cents={t.amount.cents} classification={t.classification} />
@@ -234,7 +235,12 @@ function TopExpenses({
 
 function Badge({ transaction }: { transaction: MonthlyReportDto['topExpenses'][number] }) {
   const badge = paymentBadge(transaction);
-  return badge ? <span className={`badge badge-${badge.tone}`}>{badge.label}</span> : null;
+  return badge ? (
+    <>
+      {' · '}
+      <span className={`badge badge-${badge.tone}`}>{badge.label}</span>
+    </>
+  ) : null;
 }
 
 function Recurring({ report }: { report: MonthlyReportDto }) {
