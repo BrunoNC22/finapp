@@ -40,3 +40,15 @@ export class InMemoryRawPayloadStore extends RawPayloadStore {
     for (const id of transactionIds) this.payloads.delete(id);
   }
 }
+
+import { RecurrenceDismissals } from '../../src/modules/ledger/application/ports/recurrence-dismissals.js';
+
+export class InMemoryRecurrenceDismissals extends RecurrenceDismissals {
+  private readonly keys = new Set<string>();
+  async dismiss(key: string): Promise<void> {
+    this.keys.add(key);
+  }
+  async all(): Promise<Set<string>> {
+    return new Set(this.keys);
+  }
+}

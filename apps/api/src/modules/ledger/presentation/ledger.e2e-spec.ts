@@ -3,6 +3,7 @@ import {
   CategorizationRuleSchema,
   CategorySchema,
   InstallmentPurchaseSchema,
+  MonthlyReportSchema,
   TransactionPageSchema,
   TransactionSchema,
 } from '@finapp/contracts';
@@ -175,5 +176,34 @@ describe('ledger HTTP API (demo provider, real MongoDB)', () => {
     );
     expect((await send('PATCH', `/categories/${created.id}`, { archived: true })).json().archived).toBe(true);
     expect((await send('POST', '/categories', { kind: 'expense' })).statusCode).toBe(400);
+  });
+
+  it('GET /reports/monthly assembles the month (contract format), without own transfers inflating anything', async () => {
+    const response = await get('/reports/monthly?month=2026-10');
+    expect(response.statusCode).toBe(200);
+    expect(noDocuments(response.body)).toBe(true);
+    const report = MonthlyReportSchema.parse(response.json());
+
+    expect(report.cashFlow).toHaveLength(12);
+    const october = report.cashFlow.at(-1);
+    // Renda do demo: bolsa (1.200) + cliente (1.500) + rendimento e cashback (centavos). O repasse PJ → carteira não conta.
+    expect(october?.income.cents).toBeGreaterThan(270_000);
+    expect(october?.income.cents).toBeLessThan(272_000);
+    expect(report.categories.length).toBeGreaterThan(5);
+    // 'streaming exemplo' fica para o teste de dispensa (os testes rodam em ordem aleatória).
+    expect(report.recurring.map((r) => r.label)).toEqual(expect.arrayContaining(['operadora exemplo']));
+    expect(report.commitments).toHaveLength(12);
+    expect(report.commitments[0]?.month).toBe('2026-11');
+  });
+
+  it('dismissing a recurrence removes it from the report; invalid month is 400', async () => {
+    const before = MonthlyReportSchema.parse((await get('/reports/monthly?month=2026-10')).json());
+    const target = before.recurring.find((r) => r.label === 'streaming exemplo');
+    expect(
+      (await send('POST', `/reports/recurring/${encodeURIComponent(target?.key ?? '')}/dismiss`, {})).statusCode,
+    ).toBe(204);
+    const after = MonthlyReportSchema.parse((await get('/reports/monthly?month=2026-10')).json());
+    expect(after.recurring.some((r) => r.label === 'streaming exemplo')).toBe(false);
+    expect((await get('/reports/monthly?month=outubro')).statusCode).toBe(400);
   });
 });

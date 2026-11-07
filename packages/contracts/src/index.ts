@@ -193,3 +193,50 @@ export const SyncRunSchema = z.object({
   uncategorized: z.number().int(),
 });
 export type SyncRunDto = z.infer<typeof SyncRunSchema>;
+
+// ------------------------------------------------------------------ relatórios
+export const RecurringSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  occurrences: z.number().int(),
+  typicalAmount: MoneySchema,
+  intervalDays: z.number().int(),
+  lastOn: LocalDateSchema,
+  nextExpectedOn: LocalDateSchema,
+  annualCost: MoneySchema,
+  categoryId: z.string().optional(),
+});
+export type RecurringDto = z.infer<typeof RecurringSchema>;
+
+const spentRow = { spent: MoneySchema, count: z.number().int() };
+
+export const MonthlyReportSchema = z.object({
+  month: z.string().regex(/^\d{4}-\d{2}$/),
+  cashFlow: z.array(z.object({ month: z.string(), income: MoneySchema, spending: MoneySchema, net: MoneySchema })),
+  categories: z.array(
+    z.object({
+      categoryId: z.string().nullable(),
+      groupId: z.string().nullable(),
+      ...spentRow,
+      previousAverage: MoneySchema,
+      changePercent: z.number().int().nullable(),
+    }),
+  ),
+  byAccount: z.array(z.object({ accountId: z.string(), ...spentRow })),
+  byPaymentMethod: z.array(z.object({ paymentMethod: PaymentMethodSchema, ...spentRow })),
+  topExpenses: z.array(TransactionSchema),
+  outliers: z.array(z.object({ transaction: TransactionSchema, timesTheMedian: z.number() })),
+  recurring: z.array(RecurringSchema),
+  commitments: z.array(
+    z.object({ month: z.string(), installments: MoneySchema, recurring: MoneySchema, total: MoneySchema }),
+  ),
+});
+export type MonthlyReportDto = z.infer<typeof MonthlyReportSchema>;
+
+export const MonthlyReportQuerySchema = z.object({
+  month: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .optional(),
+});
+export type MonthlyReportQuery = z.infer<typeof MonthlyReportQuerySchema>;

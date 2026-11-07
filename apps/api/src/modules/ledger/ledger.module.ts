@@ -9,6 +9,7 @@ import { AccountRepository } from './application/ports/account-repository.js';
 import { CategorizationRuleRepository } from './application/ports/categorization-rule-repository.js';
 import { CategoryRepository } from './application/ports/category-repository.js';
 import { OpenFinanceProvider } from './application/ports/open-finance-provider.js';
+import { RecurrenceDismissals } from './application/ports/recurrence-dismissals.js';
 import { RawPayloadStore, SyncLock, SyncRunRepository } from './application/ports/sync-ports.js';
 import { TransactionQueries } from './application/ports/transaction-queries.js';
 import { TransactionRepository } from './application/ports/transaction-repository.js';
@@ -23,6 +24,7 @@ import {
   GetInstallmentPurchases,
   UpdateCategory,
 } from './application/use-cases/ledger-commands.js';
+import { GetMonthlyReport } from './application/use-cases/monthly-report.js';
 import { SyncAccounts } from './application/use-cases/sync-accounts.js';
 import { Categorizer } from './domain/categorization/categorizer.js';
 import { DemoOpenFinanceProvider } from './infrastructure/demo/demo-open-finance-provider.js';
@@ -32,6 +34,7 @@ import {
   MongoCategorizationRuleRepository,
   MongoCategoryRepository,
   MongoRawPayloadStore,
+  MongoRecurrenceDismissals,
   MongoSyncLock,
   MongoSyncRunRepository,
 } from './infrastructure/mongo/mongo-ledger-adapters.js';
@@ -47,6 +50,7 @@ import {
   InstallmentsController,
   TransactionsController,
 } from './presentation/ledger.controllers.js';
+import { ReportsController } from './presentation/reports.controller.js';
 import { SyncController } from './presentation/sync.controller.js';
 
 const mongo = <T>(provide: abstract new (...args: never[]) => T, make: (db: Db) => T) => ({
@@ -75,6 +79,7 @@ function openFinanceProvider(config: AppConfig, clock: Clock): OpenFinanceProvid
     CategoriesController,
     CategorizationRulesController,
     InstallmentsController,
+    ReportsController,
   ],
   providers: [
     { provide: Clock, useFactory: () => new SystemClock() },
@@ -87,6 +92,13 @@ function openFinanceProvider(config: AppConfig, clock: Clock): OpenFinanceProvid
     mongo(SyncLock, (db) => new MongoSyncLock(db)),
     mongo(RawPayloadStore, (db) => new MongoRawPayloadStore(db)),
     mongo(TransactionQueries, (db) => new MongoTransactionQueries(db)),
+    mongo(RecurrenceDismissals, (db) => new MongoRecurrenceDismissals(db)),
+    {
+      provide: GetMonthlyReport,
+      useFactory: (t: TransactionRepository, d: RecurrenceDismissals, clock: Clock) =>
+        new GetMonthlyReport(t, d, clock),
+      inject: [TransactionRepository, RecurrenceDismissals, Clock],
+    },
     {
       provide: CategorizeTransactionManually,
       useFactory: (t: TransactionRepository, c: CategoryRepository) => new CategorizeTransactionManually(t, c),

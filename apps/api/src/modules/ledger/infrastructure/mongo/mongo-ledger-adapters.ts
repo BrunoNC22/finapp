@@ -3,6 +3,7 @@ import { Document } from '../../../../shared/kernel/document.js';
 import { AccountRepository } from '../../application/ports/account-repository.js';
 import { CategorizationRuleRepository } from '../../application/ports/categorization-rule-repository.js';
 import { CategoryRepository } from '../../application/ports/category-repository.js';
+import { RecurrenceDismissals } from '../../application/ports/recurrence-dismissals.js';
 import {
   RawPayloadStore,
   type SyncAccountResult,
@@ -254,5 +255,22 @@ export class MongoRawPayloadStore extends RawPayloadStore {
   async deleteMany(transactionIds: readonly string[]): Promise<void> {
     if (transactionIds.length === 0) return;
     await this.collection.deleteMany({ _id: { $in: [...transactionIds] } });
+  }
+}
+
+// ---------------------------------------------------------------------------- recorrências dispensadas
+export class MongoRecurrenceDismissals extends RecurrenceDismissals {
+  private readonly collection: Collection<{ _id: string; at: Date }>;
+  constructor(db: Db) {
+    super();
+    this.collection = db.collection<{ _id: string; at: Date }>(COLLECTIONS.recurrenceDismissals);
+  }
+
+  async dismiss(key: string): Promise<void> {
+    await this.collection.updateOne({ _id: key }, { $setOnInsert: { at: new Date() } }, { upsert: true });
+  }
+
+  async all(): Promise<Set<string>> {
+    return new Set((await this.collection.find({}, { projection: { _id: 1 } }).toArray()).map((d) => d._id));
   }
 }

@@ -8,6 +8,7 @@ export const COLLECTIONS = {
   rules: 'categorization_rules',
   syncRuns: 'sync_runs',
   locks: 'locks',
+  recurrenceDismissals: 'recurrence_dismissals',
 } as const;
 
 /** Cria os índices do ledger (idempotente). Chamado no boot e nos testes de integração. */
