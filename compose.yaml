@@ -47,6 +47,17 @@ services:
     networks: [data, egress]
     # Sem "ports": a exposição (só em 127.0.0.1 + tailscale serve) vem com a autenticação (#16/#21).
 
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    image: finapp-web:local
+    restart: unless-stopped
+    depends_on: [api]
+    # SÓ no loopback do host: o acesso externo é feito pelo `tailscale serve` (HTTPS da tailnet).
+    ports: ["127.0.0.1:${FINAPP_WEB_PORT:-8080}:80"]
+    networks: [egress]
+
 networks:
   # Rede sem saída para a internet; a API entra nela e também numa rede externa.
   data:

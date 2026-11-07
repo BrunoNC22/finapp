@@ -16,6 +16,16 @@ Guarde **duas** senhas fora da máquina (num gerenciador de senhas):
 - a frase-senha do cofre LUKS, sem a qual os dados locais são irrecuperáveis;
 - a senha do repositório restic, sem a qual os backups são irrecuperáveis.
 
+## Acesso pelo celular e pelo desktop (VPN)
+
+O container `web` serve o app e repassa `/api` para a API. Ele publica **só em `127.0.0.1:8080`**. O acesso externo é feito pelo `tailscale serve`, que dá HTTPS com certificado da sua tailnet:
+
+1. No painel do Tailscale: **DNS → HTTPS Certificates → Enable** (uma vez).
+2. Na máquina: `sudo tailscale serve --bg --https=443 http://127.0.0.1:8080`.
+3. No `.env`: `WEBAUTHN_RP_ID=<máquina>.<tailnet>.ts.net` e `WEBAUTHN_ORIGIN=https://<máquina>.<tailnet>.ts.net` (necessário para a digital/passkey), e então `docker compose up -d`.
+
+Nunca use `tailscale funnel` (ele publica na internet).
+
 ## Primeiro acesso e "esqueci a senha"
 
 Gere um código de uso único (válido por 15 min) no servidor e use-o na tela de entrada do app para cadastrar ou redefinir a senha:

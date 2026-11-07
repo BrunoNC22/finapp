@@ -1,0 +1,35 @@
+{
+	admin off
+	auto_https off
+}
+
+# Atrás do `tailscale serve` (HTTPS da tailnet). Publicado só em 127.0.0.1 no host.
+:80 {
+	encode zstd gzip
+
+	header {
+		# Só recursos do próprio app; nada de scripts de terceiros nem iframes.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; manifest-src 'self'; worker-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		X-Frame-Options DENY
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+
+	# API: /api/* → api:3000 (sem o prefixo). Respostas de dados nunca são cacheadas.
+	handle_path /api/* {
+		header Cache-Control "no-store"
+		reverse_proxy api:3000
+	}
+
+	# App (SPA): arquivos estáticos com fallback para index.html.
+	handle {
+		root * /srv
+		@shell path /index.html /sw.js /registerSW.js /manifest.webmanifest
+		header @shell Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}
