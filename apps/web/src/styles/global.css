@@ -284,3 +284,9 @@ select {
     transform: none;
   }
 }
+
+/* Enquanto a área logada carrega (só na primeira vez; depois fica no cache do service worker). */
+.app-loading {
+  min-height: 100dvh;
+  background: var(--bg);
+}

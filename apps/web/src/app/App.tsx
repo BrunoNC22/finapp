@@ -1,10 +1,12 @@
-import { useEffect } from 'react';
-import { BrowserRouter, Route, Routes } from 'react-router';
+import { lazy, Suspense, useEffect } from 'react';
 import { LoginPage } from '../features/auth/LoginPage';
-import { ChartsPreview } from '../features/dev/ChartsPreview';
-import { SettingsPage } from '../features/settings/SettingsPage';
-import { AppShell, Placeholder } from './AppShell';
 import { useServices, useSession } from './services';
+
+// Divisão de código: a tela de entrada precisa abrir rápido, mesmo num celular lento.
+const AuthenticatedApp = lazy(() => import('./AuthenticatedApp'));
+const ChartsPreview = lazy(() =>
+  import('../features/dev/ChartsPreview').then((module) => ({ default: module.ChartsPreview })),
+);
 
 /** Sem sessão em memória, só existe a tela de entrada. A tela trava sozinha após inatividade. */
 export function App() {
@@ -17,23 +19,18 @@ export function App() {
   }, [session]);
 
   // Só em desenvolvimento: revisão visual dos gráficos (dados fictícios), sem login.
-  if (import.meta.env.DEV && window.location.pathname === '/dev/charts') return <ChartsPreview />;
+  if (import.meta.env.DEV && window.location.pathname === '/dev/charts') {
+    return (
+      <Suspense fallback={null}>
+        <ChartsPreview />
+      </Suspense>
+    );
+  }
   if (state.status === 'signed-out') return <LoginPage expired={state.reason === 'expired'} />;
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route element={<AppShell />}>
-          <Route index element={<Placeholder title="Painel" />} />
-          <Route path="transacoes" element={<Placeholder title="Transações" />} />
-          <Route path="parcelas" element={<Placeholder title="Parcelas" />} />
-          <Route path="metas" element={<Placeholder title="Metas" />} />
-          <Route path="renda" element={<Placeholder title="Renda" />} />
-          <Route path="contas" element={<Placeholder title="Contas" />} />
-          <Route path="configuracoes" element={<SettingsPage />} />
-          <Route path="*" element={<Placeholder title="Página não encontrada" />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <Suspense fallback={<div className="app-loading" aria-busy="true" />}>
+      <AuthenticatedApp />
+    </Suspense>
   );
 }
