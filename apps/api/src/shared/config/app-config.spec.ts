@@ -14,6 +14,13 @@ describe('AppConfig.fromEnv', () => {
     expect(config.logLevel).toBe('info');
     expect(config.mongo).toEqual({ url: validEnv.MONGO_URL, dbName: 'finapp' });
     expect(config.openFinance).toEqual({ provider: 'demo' });
+    expect(config.sync).toEqual({ intervalHours: 6 });
+  });
+
+  it('accepts disabling the automatic sync and rejects absurd intervals', () => {
+    expect(AppConfig.fromEnv({ ...validEnv, SYNC_INTERVAL_HOURS: '0' }).sync.intervalHours).toBe(0);
+    expect(() => AppConfig.fromEnv({ ...validEnv, SYNC_INTERVAL_HOURS: '-1' })).toThrow(InvalidConfigError);
+    expect(() => AppConfig.fromEnv({ ...validEnv, SYNC_INTERVAL_HOURS: '1000' })).toThrow(InvalidConfigError);
   });
 
   it('coerces the port from string', () => {

@@ -35,6 +35,7 @@ services:
       # Usuário próprio da aplicação, com acesso só ao banco finapp (scripts/mongo-app-user.sh).
       MONGO_URL: mongodb://${MONGO_APP_USER:?defina MONGO_APP_USER}:${MONGO_APP_PASSWORD:?defina MONGO_APP_PASSWORD}@mongo:27017/finapp?authSource=finapp
       OPEN_FINANCE_PROVIDER: ${OPEN_FINANCE_PROVIDER:-demo}
+      SYNC_INTERVAL_HOURS: ${SYNC_INTERVAL_HOURS:-6}
       PLUGGY_CLIENT_ID: ${PLUGGY_CLIENT_ID:-}
       PLUGGY_CLIENT_SECRET: ${PLUGGY_CLIENT_SECRET:-}
       PLUGGY_ITEM_IDS: ${PLUGGY_ITEM_IDS:-}

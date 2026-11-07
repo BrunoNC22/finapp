@@ -35,6 +35,7 @@ const schema = z.object({
   ),
   MONGO_DB_NAME: optional(z.string().min(1).default('finapp')),
   OPEN_FINANCE_PROVIDER: optional(z.enum(['demo', 'pluggy']).default('demo')),
+  SYNC_INTERVAL_HOURS: optional(z.coerce.number().min(0).max(168).default(6)),
   PLUGGY_CLIENT_ID: optional(z.string().optional()),
   PLUGGY_CLIENT_SECRET: optional(z.string().optional()),
   PLUGGY_ITEM_IDS: optional(z.string().optional()),
@@ -51,10 +52,13 @@ export class AppConfig {
     readonly logLevel: string,
     readonly mongo: { readonly url: string; readonly dbName: string },
     readonly openFinance: OpenFinanceConfig,
+    /** Sincronização automática: intervalo em horas (0 = desligada). */
+    readonly sync: { readonly intervalHours: number },
   ) {
     Object.freeze(this.http);
     Object.freeze(this.mongo);
     Object.freeze(this.openFinance);
+    Object.freeze(this.sync);
     Object.freeze(this);
   }
 
@@ -90,6 +94,7 @@ export class AppConfig {
       e.LOG_LEVEL,
       { url: e.MONGO_URL as string, dbName: e.MONGO_DB_NAME },
       openFinance,
+      { intervalHours: e.SYNC_INTERVAL_HOURS },
     );
   }
 

@@ -22,6 +22,7 @@ describe('sync endpoints (demo provider, real MongoDB)', () => {
       MONGO_URL: mongo.url,
       MONGO_DB_NAME: dbName,
       OPEN_FINANCE_PROVIDER: 'demo',
+      SYNC_INTERVAL_HOURS: '0',
     });
     const moduleRef = await Test.createTestingModule({ imports: [ConfigModule, MongoModule, LedgerModule] })
       .overrideProvider(AppConfig)

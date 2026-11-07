@@ -26,6 +26,7 @@ import {
 import { MongoTransactionRepository } from './infrastructure/mongo/mongo-transaction-repository.js';
 import { PluggyClient } from './infrastructure/pluggy/pluggy-client.js';
 import { PluggyOpenFinanceProvider } from './infrastructure/pluggy/pluggy-open-finance-provider.js';
+import { nodeTimers, SyncScheduler } from './infrastructure/scheduling/sync-scheduler.js';
 import { SyncController } from './presentation/sync.controller.js';
 
 const mongo = <T>(provide: abstract new (...args: never[]) => T, make: (db: Db) => T) => ({
@@ -85,6 +86,19 @@ function openFinanceProvider(config: AppConfig, clock: Clock): OpenFinanceProvid
       ],
     },
     {
+      provide: SyncScheduler,
+      useFactory: (sync: SyncAccounts, runs: SyncRunRepository, clock: Clock, config: AppConfig) =>
+        new SyncScheduler({
+          sync,
+          runs,
+          clock,
+          timers: nodeTimers,
+          intervalHours: config.sync.intervalHours,
+          log: (message) => new Logger('SyncScheduler').log(message),
+        }),
+      inject: [SyncAccounts, SyncRunRepository, Clock, AppConfig],
+    },
+    {
       provide: SeedDefaultCategorization,
       useFactory: (categories: CategoryRepository, rules: CategorizationRuleRepository) =>
         new SeedDefaultCategorization(categories, rules),
@@ -103,6 +117,7 @@ export class LedgerModule implements OnApplicationBootstrap, OnApplicationShutdo
   constructor(
     @Inject(Db) private readonly db: Db,
     @Inject(SeedDefaultCategorization) private readonly seed: SeedDefaultCategorization,
+    @Inject(SyncScheduler) private readonly scheduler: SyncScheduler,
   ) {
     this.ready = new Promise((resolve) => {
       this.markReady = resolve;
@@ -116,6 +131,7 @@ export class LedgerModule implements OnApplicationBootstrap, OnApplicationShutdo
 
   onApplicationShutdown(): void {
     clearTimeout(this.retry);
+    this.scheduler.stop();
   }
 
   private async prepare(): Promise<void> {
@@ -126,6 +142,8 @@ export class LedgerModule implements OnApplicationBootstrap, OnApplicationShutdo
         `ledger pronto (categorias criadas: ${seeded.categoriesCreated}, regras: ${seeded.rulesCreated})`,
       );
       this.markReady();
+      // A sincronização automática só começa com o banco preparado.
+      void this.scheduler.start();
     } catch (error) {
       this.logger.warn(
         `banco indisponível para preparar o ledger; nova tentativa em 30 s (${(error as Error).message})`,
