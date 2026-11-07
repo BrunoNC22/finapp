@@ -26,6 +26,7 @@ Leia `docs/arquitetura.md` e `docs/adr/` antes de mudar a estrutura.
 - Configuração só via `AppConfig.fromEnv` (validada no boot; mensagens nunca ecoam valores).
 - Logs: nunca registrar valores, descrições ou payloads financeiros (veja `REDACTED_PATHS`).
 - Gráficos: todo o tema do Chart.js vive em `apps/web/src/lib/charts/chart-config.ts`.
+- Front: telas dependem de **interfaces** (`AuthApi`, `Biometrics`) via `ServicesProvider`; testes usam dublês manuais (`apps/web/test/fakes.tsx`). Token de sessão **só em memória** (`SessionStore`). Dinheiro e datas só via `src/lib/format.ts`. Cores só via tokens CSS (`src/styles/tokens.css`).
 
 ## Comandos
 
@@ -33,6 +34,8 @@ Leia `docs/arquitetura.md` e `docs/adr/` antes de mudar a estrutura.
 pnpm check        # lint + arquitetura + tipos + testes (rode antes de commitar)
 pnpm test         # todos os testes
 pnpm -F api test  # só a API
+pnpm -F web dev   # front em http://localhost:5173 (proxy /api → FINAPP_API_TARGET, padrão http://127.0.0.1:3000)
+pnpm -F web test  # só o front
 pnpm format       # formata e organiza imports (Biome)
 pnpm build        # build de produção
 docker compose up -d --build api   # API em container (exige o cofre aberto para o Mongo)

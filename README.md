@@ -2,7 +2,7 @@
 
 Inteligência financeira pessoal, **self-hosted**. O finapp junta suas contas e cartões via Open Finance e mostra com o que, quando e quanto você gasta: por categoria, por conta, à vista ou parcelado. Depois confronta isso com as suas **metas** (uma compra financiada ou um estilo de vida que você quer sustentar). Um assistente de IA (Claude, via MCP) usa esses dados para apontar o que está pesando e o que dá para mudar.
 
-> **Status:** em construção. API base (NestJS + Fastify + MongoDB) pronta; próximo passo: domínio de contas e transações.
+> **Status:** em construção. API completa do livro-caixa (sincronização Open Finance, transferências internas, parcelas, categorias, relatórios) e login estilo app de banco; front (PWA) em construção.
 
 ## Princípios
 
