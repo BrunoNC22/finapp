@@ -2,7 +2,9 @@ name: finapp
 
 services:
   mongo:
-    image: mongo:8.0
+    # Versão EXATA: versões 8.0 mais novas se recusam a iniciar em kernels Linux >= 6.19
+    # (MongoDB SERVER-121912, TCMalloc/rseq). Não atualizar sem checar esse ticket.
+    image: mongo:8.0.34
     restart: unless-stopped
     # Roda com o dono dos dados do cofre (não como root).
     user: "${FINAPP_UID:-1000}:${FINAPP_GID:-1000}"
