@@ -6,9 +6,12 @@ WORKDIR /repo
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/api/package.json apps/api/
+COPY packages/contracts/package.json packages/contracts/
 RUN pnpm install --frozen-lockfile --filter api... --ignore-scripts
+COPY packages/contracts packages/contracts
 COPY apps/api apps/api
-RUN pnpm --filter api build \
+RUN pnpm --filter @finapp/contracts build \
+ && pnpm --filter api build \
  && pnpm --filter api deploy --prod --ignore-scripts /out
 
 FROM node:24-alpine AS runtime

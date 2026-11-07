@@ -4,13 +4,14 @@
   "license": "MIT",
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || true",
-    "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm build:packages && pnpm -r test",
+    "typecheck": "pnpm build:packages && pnpm -r typecheck",
     "build": "pnpm -r build",
     "lint": "biome check .",
     "format": "biome check --write .",
     "arch": "depcruise apps/api/src --config .dependency-cruiser.cjs",
-    "check": "pnpm lint && pnpm arch && pnpm typecheck && pnpm test"
+    "check": "pnpm lint && pnpm arch && pnpm typecheck && pnpm test",
+    "build:packages": "pnpm -r --filter './packages/*' build"
   },
   "packageManager": "pnpm@12.18.0+sha512.9d7882d5dc82147ecfc4e062aa34834e0ad0296710a1837a1115ae012127d36b7109e321ac1598a1dd0a65597681b1e99917e12ed0d749eae91187943363beb3",
   "devDependencies": {

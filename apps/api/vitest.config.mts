@@ -10,6 +10,8 @@ export default defineConfig({
     // Um único MongoDB descartável (Testcontainers) para a execução inteira.
     globalSetup: ['test/mongo/global-setup.ts'],
     hookTimeout: 60_000,
+    // Testes e2e sincronizam um ano de dados no MongoDB; sob carga paralela passam de 5 s.
+    testTimeout: 30_000,
     environment: 'node',
     // Testes não podem depender de ordem nem de estado compartilhado.
     sequence: { shuffle: true },

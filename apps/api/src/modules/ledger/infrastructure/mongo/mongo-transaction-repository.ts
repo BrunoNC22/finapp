@@ -3,6 +3,7 @@ import { Document } from '../../../../shared/kernel/document.js';
 import { LocalDate } from '../../../../shared/kernel/local-date.js';
 import { Money } from '../../../../shared/kernel/money.js';
 import { type TransactionPeriodQuery, TransactionRepository } from '../../application/ports/transaction-repository.js';
+import { foldText } from '../../domain/categorization/categorization-rule.js';
 import { Installment } from '../../domain/installment.js';
 import {
   type CategorySource,
@@ -23,6 +24,8 @@ interface TransactionDocument {
   occurredOn: string;
   amountCents: Long;
   description: string;
+  /** Descrição sem acentos e em minúsculas, para busca. */
+  descriptionFolded: string;
   paymentMethod: PaymentMethod;
   status: TransactionStatus;
   counterparty?: { name?: string; document?: string };
@@ -39,6 +42,8 @@ interface TransactionDocument {
   transferLink?: string;
   category?: { categoryId: string; source: CategorySource };
 }
+
+export type { TransactionDocument };
 
 export class MongoTransactionRepository extends TransactionRepository {
   private readonly collection: Collection<TransactionDocument>;
@@ -79,6 +84,21 @@ export class MongoTransactionRepository extends TransactionRepository {
     return doc ? toEntity(doc) : undefined;
   }
 
+  /** Migração: preenche o campo de busca em documentos gravados antes dele existir. */
+  async backfillSearchFields(): Promise<number> {
+    const missing = await this.collection
+      .find({ descriptionFolded: { $exists: false } }, { projection: { description: 1 } })
+      .toArray();
+    if (missing.length === 0) return 0;
+    await this.collection.bulkWrite(
+      missing.map((d) => ({
+        updateOne: { filter: { _id: d._id }, update: { $set: { descriptionFolded: foldText(d.description) } } },
+      })),
+      { ordered: false },
+    );
+    return missing.length;
+  }
+
   async findInPeriod(query: TransactionPeriodQuery): Promise<Transaction[]> {
     const docs = await this.collection
       .find({
@@ -101,6 +121,7 @@ function toDocument(transaction: Transaction): TransactionDocument {
     occurredOn: props.occurredOn.toString(),
     amountCents: toLong(props.amount),
     description: props.description,
+    descriptionFolded: foldText(props.description),
     paymentMethod: props.paymentMethod,
     status: props.status,
     ...(counterparty
@@ -130,7 +151,7 @@ function toDocument(transaction: Transaction): TransactionDocument {
   };
 }
 
-function toEntity(doc: TransactionDocument): Transaction {
+export function toEntity(doc: TransactionDocument): Transaction {
   const counterparty = doc.counterparty
     ? {
         ...(doc.counterparty.name ? { name: doc.counterparty.name } : {}),

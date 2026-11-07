@@ -1,3 +1,4 @@
+import { NotFoundError } from '../../../../shared/application/errors.js';
 import type { IdGenerator } from '../../../../shared/application/id-generator.js';
 import type { LocalDate } from '../../../../shared/kernel/local-date.js';
 import { CategorizationRule, type CategorizationRuleProps } from '../../domain/categorization/categorization-rule.js';
@@ -8,17 +9,15 @@ import type { CategorizationRuleRepository } from '../ports/categorization-rule-
 import type { CategoryRepository } from '../ports/category-repository.js';
 import type { TransactionRepository } from '../ports/transaction-repository.js';
 
-export class UnknownCategoryError extends Error {
+export class UnknownCategoryError extends NotFoundError {
   constructor(categoryId: string) {
     super(`categoria inexistente ou arquivada: ${categoryId}`);
-    this.name = 'UnknownCategoryError';
   }
 }
 
-export class UnknownTransactionError extends Error {
+export class UnknownTransactionError extends NotFoundError {
   constructor(transactionId: string) {
     super(`transação inexistente: ${transactionId}`);
-    this.name = 'UnknownTransactionError';
   }
 }
 

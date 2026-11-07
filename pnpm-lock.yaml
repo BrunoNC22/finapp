@@ -175,6 +175,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@finapp/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@nestjs/common':
         specifier: ^12.4.0
         version: 12.4.0(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0)
@@ -230,6 +233,19 @@ importers:
       unplugin-swc:
         specifier: ^2.0.0
         version: 2.0.0(@swc/core@1.16.22)(rolldown@1.2.16)(vite@8.3.6(@types/node@26.6.6)(yaml@2.9.1))
+      vitest:
+        specifier: ^5.1.0
+        version: 5.1.0(@types/node@26.6.6)(vite@8.3.6(@types/node@26.6.6)(yaml@2.9.1))
+
+  packages/contracts:
+    dependencies:
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
+    devDependencies:
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
       vitest:
         specifier: ^5.1.0
         version: 5.1.0(@types/node@26.6.6)(vite@8.3.6(@types/node@26.6.6)(yaml@2.9.1))

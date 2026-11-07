@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { accountRepositoryContract } from '../../../../../test/contracts/account-repository.contract.js';
+import { transactionQueriesContract } from '../../../../../test/contracts/transaction-queries.contract.js';
 import { transactionRepositoryContract } from '../../../../../test/contracts/transaction-repository.contract.js';
 import { TestMongo } from '../../../../../test/mongo/test-mongo.js';
 import { Money } from '../../../../shared/kernel/money.js';
@@ -14,6 +15,7 @@ import {
   MongoSyncLock,
   MongoSyncRunRepository,
 } from './mongo-ledger-adapters.js';
+import { MongoTransactionQueries } from './mongo-transaction-queries.js';
 import { MongoTransactionRepository } from './mongo-transaction-repository.js';
 
 let mongo: TestMongo;
@@ -32,6 +34,26 @@ const freshDb = async () => {
 
 transactionRepositoryContract('MongoDB', async () => new MongoTransactionRepository(await freshDb()));
 accountRepositoryContract('MongoDB', async () => new MongoAccountRepository(await freshDb()));
+transactionQueriesContract('MongoDB', async () => {
+  const db = await freshDb();
+  return { repository: new MongoTransactionRepository(db), queries: new MongoTransactionQueries(db) };
+});
+
+describe('search field migration', () => {
+  it('fills the folded description of documents written before the field existed', async () => {
+    const db = await freshDb();
+    const repository = new MongoTransactionRepository(db);
+    const { aTransaction } = await import('../../../../../test/builders/transaction.builder.js');
+    await repository.save(aTransaction().withId('legacy').withDescription('FARMÁCIA').build());
+    await db.collection('transactions').updateOne({ _id: 'legacy' as never }, { $unset: { descriptionFolded: '' } });
+
+    expect(await repository.backfillSearchFields()).toBe(1);
+    expect((await db.collection('transactions').findOne({ _id: 'legacy' as never }))?.descriptionFolded).toBe(
+      'farmacia',
+    );
+    expect(await repository.backfillSearchFields()).toBe(0);
+  });
+});
 
 describe('MongoDB ledger adapters', () => {
   it('stores money as Int64, never as a floating point number', async () => {

@@ -3,6 +3,7 @@ import type { Type } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Logger } from 'nestjs-pino';
+import { AppExceptionFilter } from './shared/presentation/exception.filter.js';
 
 export function createFastifyAdapter(): FastifyAdapter {
   return new FastifyAdapter({ trustProxy: true });
@@ -10,6 +11,7 @@ export function createFastifyAdapter(): FastifyAdapter {
 
 /** Configuração comum a produção e testes e2e. */
 export async function configureApp(app: NestFastifyApplication): Promise<NestFastifyApplication> {
+  app.useGlobalFilters(new AppExceptionFilter());
   app.enableShutdownHooks();
   await app.init();
   await app.getHttpAdapter().getInstance().ready();

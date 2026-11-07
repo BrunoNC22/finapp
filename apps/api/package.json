@@ -21,6 +21,7 @@
     "vitest": "^5.1.0"
   },
   "dependencies": {
+    "@finapp/contracts": "workspace:*",
     "@nestjs/common": "^12.4.0",
     "@nestjs/core": "^12.4.0",
     "@nestjs/platform-fastify": "^12.4.0",

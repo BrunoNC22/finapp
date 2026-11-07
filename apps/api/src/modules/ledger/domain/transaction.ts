@@ -242,6 +242,19 @@ export class Transaction {
     if (previous.classificationSource === 'manual') this.classifyManually(previous.classification);
   }
 
+  /**
+   * A outra ponta desfez a transferência: remove a ligação e volta à classificação padrão.
+   * Usado quando o usuário corrige a conciliação do outro lado.
+   */
+  releaseTransfer(): void {
+    const { transferLink: _removed, ...rest } = this.state;
+    this.state = {
+      ...rest,
+      classification: Transaction.defaultClassification(this.props),
+      classificationSource: 'default',
+    };
+  }
+
   /** Remove a categoria automática (regra ou provedor) para recalcular. A manual é preservada. */
   clearAutomaticCategory(): void {
     if (!this.state.category || this.state.category.source === 'manual') return;

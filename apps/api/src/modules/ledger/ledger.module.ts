@@ -10,9 +10,21 @@ import { CategorizationRuleRepository } from './application/ports/categorization
 import { CategoryRepository } from './application/ports/category-repository.js';
 import { OpenFinanceProvider } from './application/ports/open-finance-provider.js';
 import { RawPayloadStore, SyncLock, SyncRunRepository } from './application/ports/sync-ports.js';
+import { TransactionQueries } from './application/ports/transaction-queries.js';
 import { TransactionRepository } from './application/ports/transaction-repository.js';
-import { SeedDefaultCategorization } from './application/use-cases/categorization.js';
+import {
+  CategorizeTransactionManually,
+  CreateCategorizationRule,
+  SeedDefaultCategorization,
+} from './application/use-cases/categorization.js';
+import {
+  ClassifyTransactionManually,
+  CreateCategory,
+  GetInstallmentPurchases,
+  UpdateCategory,
+} from './application/use-cases/ledger-commands.js';
 import { SyncAccounts } from './application/use-cases/sync-accounts.js';
+import { Categorizer } from './domain/categorization/categorizer.js';
 import { DemoOpenFinanceProvider } from './infrastructure/demo/demo-open-finance-provider.js';
 import { ensureLedgerIndexes } from './infrastructure/mongo/ledger-collections.js';
 import {
@@ -23,10 +35,18 @@ import {
   MongoSyncLock,
   MongoSyncRunRepository,
 } from './infrastructure/mongo/mongo-ledger-adapters.js';
+import { MongoTransactionQueries } from './infrastructure/mongo/mongo-transaction-queries.js';
 import { MongoTransactionRepository } from './infrastructure/mongo/mongo-transaction-repository.js';
 import { PluggyClient } from './infrastructure/pluggy/pluggy-client.js';
 import { PluggyOpenFinanceProvider } from './infrastructure/pluggy/pluggy-open-finance-provider.js';
 import { nodeTimers, SyncScheduler } from './infrastructure/scheduling/sync-scheduler.js';
+import {
+  AccountsController,
+  CategoriesController,
+  CategorizationRulesController,
+  InstallmentsController,
+  TransactionsController,
+} from './presentation/ledger.controllers.js';
 import { SyncController } from './presentation/sync.controller.js';
 
 const mongo = <T>(provide: abstract new (...args: never[]) => T, make: (db: Db) => T) => ({
@@ -48,7 +68,14 @@ function openFinanceProvider(config: AppConfig, clock: Clock): OpenFinanceProvid
 
 /** Composição do livro-caixa: liga as portas aos adapters (MongoDB, provedor de Open Finance). */
 @Module({
-  controllers: [SyncController],
+  controllers: [
+    SyncController,
+    AccountsController,
+    TransactionsController,
+    CategoriesController,
+    CategorizationRulesController,
+    InstallmentsController,
+  ],
   providers: [
     { provide: Clock, useFactory: () => new SystemClock() },
     { provide: IdGenerator, useFactory: () => new UuidIdGenerator() },
@@ -59,6 +86,49 @@ function openFinanceProvider(config: AppConfig, clock: Clock): OpenFinanceProvid
     mongo(SyncRunRepository, (db) => new MongoSyncRunRepository(db)),
     mongo(SyncLock, (db) => new MongoSyncLock(db)),
     mongo(RawPayloadStore, (db) => new MongoRawPayloadStore(db)),
+    mongo(TransactionQueries, (db) => new MongoTransactionQueries(db)),
+    {
+      provide: CategorizeTransactionManually,
+      useFactory: (t: TransactionRepository, c: CategoryRepository) => new CategorizeTransactionManually(t, c),
+      inject: [TransactionRepository, CategoryRepository],
+    },
+    {
+      provide: ClassifyTransactionManually,
+      useFactory: (t: TransactionRepository) => new ClassifyTransactionManually(t),
+      inject: [TransactionRepository],
+    },
+    {
+      provide: CreateCategory,
+      useFactory: (c: CategoryRepository) => new CreateCategory(c),
+      inject: [CategoryRepository],
+    },
+    {
+      provide: UpdateCategory,
+      useFactory: (c: CategoryRepository) => new UpdateCategory(c),
+      inject: [CategoryRepository],
+    },
+    {
+      provide: CreateCategorizationRule,
+      useFactory: (
+        rules: CategorizationRuleRepository,
+        categories: CategoryRepository,
+        transactions: TransactionRepository,
+        provider: OpenFinanceProvider,
+        ids: IdGenerator,
+      ) => new CreateCategorizationRule(rules, categories, transactions, new Categorizer(provider.categoryMap), ids),
+      inject: [
+        CategorizationRuleRepository,
+        CategoryRepository,
+        TransactionRepository,
+        OpenFinanceProvider,
+        IdGenerator,
+      ],
+    },
+    {
+      provide: GetInstallmentPurchases,
+      useFactory: (t: TransactionRepository, clock: Clock) => new GetInstallmentPurchases(t, clock),
+      inject: [TransactionRepository, Clock],
+    },
     { provide: OpenFinanceProvider, useFactory: openFinanceProvider, inject: [AppConfig, Clock] },
     {
       provide: SyncAccounts,
@@ -137,6 +207,8 @@ export class LedgerModule implements OnApplicationBootstrap, OnApplicationShutdo
   private async prepare(): Promise<void> {
     try {
       await ensureLedgerIndexes(this.db);
+      const migrated = await new MongoTransactionRepository(this.db).backfillSearchFields();
+      if (migrated > 0) this.logger.log(`campo de busca preenchido em ${migrated} transações`);
       const seeded = await this.seed.execute();
       this.logger.log(
         `ledger pronto (categorias criadas: ${seeded.categoriesCreated}, regras: ${seeded.rulesCreated})`,
