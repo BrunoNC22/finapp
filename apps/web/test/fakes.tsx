@@ -2,10 +2,12 @@ import type { AuthStatusDto, LoginResultDto, SessionDto } from '@finapp/contract
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react';
 import type { ReactElement } from 'react';
+import { MemoryRouter } from 'react-router';
 import { ServicesProvider } from '../src/app/services';
 import { ApiError, type AuthApi } from '../src/lib/api/api-client';
 import type { Biometrics } from '../src/lib/api/biometrics';
 import { SessionStore } from '../src/lib/session/session-store';
+import { FakeFinanceApi } from './finance-fixtures';
 
 /** API de autenticação falsa (stub + spy), escrita à mão. */
 export class FakeAuthApi implements AuthApi {
@@ -89,16 +91,26 @@ export class FakeBiometrics implements Biometrics {
 
 export function renderWithServices(
   ui: ReactElement,
-  overrides: { auth?: FakeAuthApi; biometrics?: FakeBiometrics; session?: SessionStore } = {},
+  overrides: {
+    auth?: FakeAuthApi;
+    finance?: FakeFinanceApi;
+    biometrics?: FakeBiometrics;
+    session?: SessionStore;
+    /** URL inicial do roteador em memória (telas que leem filtros da URL). */
+    route?: string;
+  } = {},
 ) {
   const auth = overrides.auth ?? new FakeAuthApi();
+  const finance = overrides.finance ?? new FakeFinanceApi();
   const biometrics = overrides.biometrics ?? new FakeBiometrics();
   const session = overrides.session ?? new SessionStore();
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const view = render(
     <QueryClientProvider client={queryClient}>
-      <ServicesProvider services={{ auth, biometrics, session }}>{ui}</ServicesProvider>
+      <ServicesProvider services={{ auth, finance, biometrics, session }}>
+        <MemoryRouter initialEntries={[overrides.route ?? '/']}>{ui}</MemoryRouter>
+      </ServicesProvider>
     </QueryClientProvider>,
   );
-  return { ...view, auth, biometrics, session };
+  return { ...view, auth, finance, biometrics, session };
 }

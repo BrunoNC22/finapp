@@ -3,13 +3,20 @@ import { anAccount } from '../../../../test/builders/account.builder.js';
 import { SYNTHETIC_CNPJ, SYNTHETIC_CPF, SYNTHETIC_CPF_DIGITS } from '../../../../test/fixtures/synthetic-documents.js';
 import { Document } from '../../../shared/kernel/document.js';
 import { Money } from '../../../shared/kernel/money.js';
-import { InvalidAccountError } from './account.js';
+import { Account, InvalidAccountError } from './account.js';
 
 describe('Account', () => {
   it('is created with a display name defaulting to the institution and kind', () => {
     const account = anAccount().withInstitution('Banco Exemplo').withKind('credit_card').build();
     expect(account.displayName).toBe('Banco Exemplo · Cartão de crédito');
     expect(account.isCreditCard).toBe(true);
+  });
+
+  it('builds the initial name from the provider without repeating the institution', () => {
+    expect(Account.nameFromProvider('Banco Exemplo', 'Platinum')).toBe('Banco Exemplo · Platinum');
+    expect(Account.nameFromProvider('Carteira X', 'Carteira X')).toBe('Carteira X');
+    expect(Account.nameFromProvider('Banco Exemplo', 'Banco Exemplo Empresas')).toBe('Banco Exemplo Empresas');
+    expect(Account.nameFromProvider('Banco Exemplo', '  ')).toBe('');
   });
 
   it('can be renamed by the user, but not to a blank name', () => {

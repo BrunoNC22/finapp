@@ -25,7 +25,7 @@ if (root) {
   createRoot(root).render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
-        <ServicesProvider services={{ auth: api, api, biometrics: browserBiometrics, session }}>
+        <ServicesProvider services={{ auth: api, finance: api, biometrics: browserBiometrics, session }}>
           <App />
         </ServicesProvider>
       </QueryClientProvider>

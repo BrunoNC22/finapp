@@ -141,7 +141,7 @@ export class SyncAccounts {
         institutionName: p.institutionName,
         kind: p.kind,
         holderDocument: Document.parse(p.holderDocument),
-        displayName: p.name ? `${p.institutionName} · ${p.name}` : '',
+        displayName: Account.nameFromProvider(p.institutionName, p.name),
       })
     );
   }

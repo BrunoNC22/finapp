@@ -1,13 +1,22 @@
 import {
+  AccountSchema,
   type AuthStatusDto,
   AuthStatusSchema,
+  CategorySchema,
+  InstallmentPurchaseSchema,
   type LoginResultDto,
   LoginResultSchema,
+  MonthlyReportSchema,
   type SessionDto,
   SessionSchema,
+  SyncRunSchema,
+  type TransactionDto,
+  TransactionPageSchema,
+  TransactionSchema,
 } from '@finapp/contracts';
 import type { ZodType } from 'zod';
 import type { SessionStore } from '../session/session-store';
+import { type FinanceApi, searchToQueryString, type TransactionSearch } from './finance-api';
 
 export class ApiError extends Error {
   constructor(
@@ -41,7 +50,7 @@ type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
  * Cliente HTTP da API. Envia o token da sessão em memória, valida as respostas com os contratos
  * e, num 401 com sessão, encerra a sessão (o app volta para a tela de entrada).
  */
-export class ApiClient implements AuthApi {
+export class ApiClient implements AuthApi, FinanceApi {
   constructor(
     private readonly session: SessionStore,
     private readonly baseUrl = '/api',
@@ -83,7 +92,46 @@ export class ApiClient implements AuthApi {
     await this.request('POST', '/auth/password', undefined, { currentPassword, newPassword });
   }
 
-  /** Requisição genérica, usada também pelas telas de dados. */
+  // ---------------------------------------------------------------- dados (FinanceApi)
+  accounts() {
+    return this.request('GET', '/accounts', AccountSchema.array());
+  }
+  categories() {
+    return this.request('GET', '/categories', CategorySchema.array());
+  }
+  monthlyReport(month: string) {
+    return this.request('GET', `/reports/monthly?month=${encodeURIComponent(month)}`, MonthlyReportSchema);
+  }
+  transactions(search: TransactionSearch) {
+    return this.request('GET', `/transactions${searchToQueryString(search)}`, TransactionPageSchema);
+  }
+  categorize(transactionId: string, categoryId: string) {
+    return this.request('PATCH', `/transactions/${encodeURIComponent(transactionId)}/category`, TransactionSchema, {
+      categoryId,
+    });
+  }
+  classify(transactionId: string, classification: TransactionDto['classification']) {
+    return this.request(
+      'PATCH',
+      `/transactions/${encodeURIComponent(transactionId)}/classification`,
+      TransactionSchema,
+      { classification },
+    );
+  }
+  installments() {
+    return this.request('GET', '/installments', InstallmentPurchaseSchema.array());
+  }
+  syncNow() {
+    return this.request('POST', '/sync', SyncRunSchema);
+  }
+  syncRuns(limit: number) {
+    return this.request('GET', `/sync/runs?limit=${limit}`, SyncRunSchema.array());
+  }
+  async dismissRecurring(key: string) {
+    await this.request('POST', `/reports/recurring/${encodeURIComponent(key)}/dismiss`);
+  }
+
+  /** Requisição genérica. */
   async request<T = unknown>(method: string, path: string, schema?: ZodType<T>, body?: unknown): Promise<T> {
     const token = this.session.currentToken();
     const response = await this.fetchFn(this.baseUrl + path, {

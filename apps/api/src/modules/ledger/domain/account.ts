@@ -46,6 +46,17 @@ export class Account {
     private _lastSyncedAt: Date | undefined,
   ) {}
 
+  /**
+   * Nome inicial a partir do que o provedor manda: "Banco · Produto", sem repetir o banco
+   * quando o nome do produto já o contém (ex.: carteiras cujo produto tem o nome da instituição).
+   */
+  static nameFromProvider(institutionName: string, providerName: string | undefined): string {
+    const institution = institutionName.trim();
+    const name = providerName?.trim() ?? '';
+    if (!name) return '';
+    return name.toLowerCase().includes(institution.toLowerCase()) ? name : `${institution} · ${name}`;
+  }
+
   static create(props: AccountProps): Account {
     const required = (value: string, field: string) => {
       if (!value.trim()) throw new InvalidAccountError(`${field} é obrigatório`);

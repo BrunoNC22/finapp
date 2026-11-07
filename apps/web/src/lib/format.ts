@@ -35,3 +35,15 @@ export const formatMonth = (month: string): string => {
   const [y, m] = month.split('-');
   return `${MONTHS[Number(m) - 1] ?? m}/${y?.slice(2)}`;
 };
+
+const dateTime = new Intl.DateTimeFormat('pt-BR', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'America/Sao_Paulo',
+});
+
+/** Instante ISO → "07/11/2026, 06:00" (horário de Brasília). */
+export const formatDateTime = (iso: string): string => dateTime.format(new Date(iso));

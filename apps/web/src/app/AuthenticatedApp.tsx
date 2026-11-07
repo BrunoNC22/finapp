@@ -1,5 +1,9 @@
 import { BrowserRouter, Route, Routes } from 'react-router';
+import { AccountsPage } from '../features/accounts/AccountsPage';
+import { DashboardPage } from '../features/dashboard/DashboardPage';
+import { InstallmentsPage } from '../features/installments/InstallmentsPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
+import { TransactionsPage } from '../features/transactions/TransactionsPage';
 import { AppShell, Placeholder } from './AppShell';
 
 /** Área logada. Carregada sob demanda: a tela de entrada não baixa o código das telas nem dos gráficos. */
@@ -8,12 +12,12 @@ export default function AuthenticatedApp() {
     <BrowserRouter>
       <Routes>
         <Route element={<AppShell />}>
-          <Route index element={<Placeholder title="Painel" />} />
-          <Route path="transacoes" element={<Placeholder title="Transações" />} />
-          <Route path="parcelas" element={<Placeholder title="Parcelas" />} />
+          <Route index element={<DashboardPage />} />
+          <Route path="transacoes" element={<TransactionsPage />} />
+          <Route path="parcelas" element={<InstallmentsPage />} />
           <Route path="metas" element={<Placeholder title="Metas" />} />
           <Route path="renda" element={<Placeholder title="Renda" />} />
-          <Route path="contas" element={<Placeholder title="Contas" />} />
+          <Route path="contas" element={<AccountsPage />} />
           <Route path="configuracoes" element={<SettingsPage />} />
           <Route path="*" element={<Placeholder title="Página não encontrada" />} />
         </Route>
