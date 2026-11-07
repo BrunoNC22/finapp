@@ -37,3 +37,14 @@ description = "Credencial da Pluggy com valor atribuído"
 # Não pega o nome da variável em código de validação nem valores fictícios curtos de teste.
 regex = '''(?m)^\s*(export\s+)?PLUGGY_CLIENT_(ID|SECRET)\s*=\s*["']?[A-Za-z0-9-]{16,}'''
 keywords = ["pluggy_client"]
+
+# Documentos SINTÉTICOS usados nos testes (apps/api/test/fixtures/synthetic-documents.ts).
+# Só estes números exatos são permitidos; qualquer outro CPF/CNPJ continua bloqueado.
+[[allowlists]]
+description = "Documentos sintéticos de teste"
+regexTarget = "match"
+regexes = [
+  '''123\.456\.789-09''',
+  '''111\.444\.777-35''',
+  '''12\.345\.678/0001-95''',
+]
