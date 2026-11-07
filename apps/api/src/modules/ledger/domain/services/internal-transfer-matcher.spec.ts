@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { anAccount } from '../../../../../test/builders/account.builder.js';
 import { aTransaction } from '../../../../../test/builders/transaction.builder.js';
 import {
+  OTHER_SYNTHETIC_CNPJ,
   OTHER_SYNTHETIC_CPF,
   SYNTHETIC_CNPJ,
   SYNTHETIC_CPF,
+  SYNTHETIC_CPF_WRONG_CHECK_DIGITS,
 } from '../../../../../test/fixtures/synthetic-documents.js';
 import type { Transaction } from '../transaction.js';
 import { InternalTransferMatcher } from './internal-transfer-matcher.js';
@@ -150,6 +152,62 @@ describe('InternalTransferMatcher', () => {
     expect(match([pixToOwnCard, onCard]).pairs).toEqual([
       { outflowId: 'pix-card', inflowId: 'card-in', reason: 'bill_payment' },
     ]);
+  });
+
+  it('links a bill paid by pix to the card issuer (its CNPJ, not the user document) or with no document', () => {
+    const cardCredit = (id: string, cents: number, day: string) =>
+      aTransaction().withId(id).withAccount('card').withAmount(cents).on(day).withPaymentMethod('bill_payment').build();
+    const toIssuer = pix('to-issuer', 'bank', -45000, '2026-04-10', OTHER_SYNTHETIC_CNPJ);
+    const noDocument = pix('no-doc', 'wallet', -7000, '2026-04-12');
+    const credits = [cardCredit('credit-1', 45000, '2026-04-11'), cardCredit('credit-2', 7000, '2026-04-12')];
+
+    const report = match([toIssuer, noDocument, ...credits]);
+
+    expect(report.pairs).toEqual(
+      expect.arrayContaining([
+        { outflowId: 'to-issuer', inflowId: 'credit-1', reason: 'bill_payment' },
+        { outflowId: 'no-doc', inflowId: 'credit-2', reason: 'bill_payment' },
+      ]),
+    );
+    expect(toIssuer.classification).toBe('internal_transfer');
+  });
+
+  it("prefers the bank's own bill payment over a same-amount pix to someone else", () => {
+    const toFriend = pix('a-to-friend', 'wallet', -9000, '2026-04-10', OTHER_SYNTHETIC_CPF);
+    const billDebit = aTransaction()
+      .withId('z-bill')
+      .withAccount('bank')
+      .withAmount(-9000)
+      .on('2026-04-10')
+      .withPaymentMethod('bill_payment')
+      .build();
+    const credit = aTransaction()
+      .withId('credit')
+      .withAccount('card')
+      .withAmount(9000)
+      .on('2026-04-10')
+      .withPaymentMethod('bill_payment')
+      .build();
+
+    const report = match([toFriend, billDebit, credit]);
+
+    expect(report.pairs).toEqual([{ outflowId: 'z-bill', inflowId: 'credit', reason: 'bill_payment' }]);
+    expect(toFriend.classification).toBe('expense');
+  });
+
+  it('never pairs a pix to someone else with a transfer into another account (only card bills relax the document)', () => {
+    const toFriend = pix('to-friend', 'wallet', -5000, '2026-03-05', OTHER_SYNTHETIC_CNPJ);
+    const intoBank = pix('into-bank', 'bank', 5000, '2026-03-05');
+
+    expect(match([toFriend, intoBank]).pairs).toHaveLength(0);
+  });
+
+  it('recognizes the user CPF even when the bank sends wrong check digits', () => {
+    const out = pix('out', 'wallet', -30000, '2026-03-05', SYNTHETIC_CPF_WRONG_CHECK_DIGITS);
+
+    match([out]);
+
+    expect(out.classification).toBe('internal_transfer');
   });
 
   it('does not link when two candidates are equally good, but still classifies by the own document', () => {

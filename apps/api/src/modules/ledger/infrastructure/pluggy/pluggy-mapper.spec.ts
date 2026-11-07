@@ -97,6 +97,16 @@ describe('transactions', () => {
     ).toBe('bill_payment');
   });
 
+  it('an unlabeled card credit mentioning a payment is the bill payment, not a refund', () => {
+    expect(mapCard({ amount: -150, type: 'CREDIT', description: 'PAGAMENTO EFETUADO OBRIGADO' }).paymentMethod).toBe(
+      'bill_payment',
+    );
+    expect(mapCard({ amount: -150, type: 'CREDIT', description: 'PGTO DEB AUTOMATICO' }).paymentMethod).toBe(
+      'bill_payment',
+    );
+    expect(mapCard({ amount: -20, type: 'CREDIT', description: 'LOJA X CANCELAMENTO' }).paymentMethod).toBe('refund');
+  });
+
   it('a card-related bank fee is a fee, not a bill payment', () => {
     expect(mapBank({ operationType: 'CARTAO', description: 'SERVICO CARTAO PROTEGIDO' }).paymentMethod).toBe('fee');
   });

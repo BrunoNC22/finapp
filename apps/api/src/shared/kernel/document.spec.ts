@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { SYNTHETIC_CNPJ, SYNTHETIC_CPF, SYNTHETIC_CPF_DIGITS } from '../../../test/fixtures/synthetic-documents.js';
+import {
+  OTHER_SYNTHETIC_CPF,
+  SYNTHETIC_CNPJ,
+  SYNTHETIC_CPF,
+  SYNTHETIC_CPF_DIGITS,
+  SYNTHETIC_CPF_WRONG_CHECK_DIGITS,
+} from '../../../test/fixtures/synthetic-documents.js';
 import { Document, InvalidDocumentError } from './document.js';
 
 // Números sintéticos (não são documentos reais).
@@ -29,6 +35,11 @@ describe('Document', () => {
     expect(Document.parse(CPF).isSameAs(Document.parse(SYNTHETIC_CPF_DIGITS))).toBe(true);
     expect(Document.parse(CPF).isSameAs(Document.parse('***.456.789-**'))).toBe(false);
     expect(Document.parse(CPF).isSameAs(Document.parse(CNPJ))).toBe(false);
+  });
+
+  it('identifies a CPF by its 9 base digits, because some banks send wrong check digits', () => {
+    expect(Document.parse(CPF).isSameAs(Document.parse(SYNTHETIC_CPF_WRONG_CHECK_DIGITS))).toBe(true);
+    expect(Document.parse(CPF).isSameAs(Document.parse(OTHER_SYNTHETIC_CPF))).toBe(false);
   });
 
   it('never prints the full number', () => {

@@ -85,6 +85,8 @@ export function mapTransaction(t: PluggyTransaction, account: PluggyAccount, tim
 }
 
 const BILL = /\bfatura\b|pagamento recebido|pagto\.? antecipado/i;
+/** No cartão, um crédito que fala em pagamento é o pagamento da fatura ("PAGAMENTO EFETUADO", "PGTO DEB AUTOMATICO"). */
+const CARD_PAYMENT_CREDIT = /\b(pagamento|pagto|pgto)\b/i;
 
 function cardPaymentMethod(t: PluggyTransaction, amount: Money, description: string): PaymentMethod {
   switch (t.operationType) {
@@ -101,7 +103,9 @@ function cardPaymentMethod(t: PluggyTransaction, amount: Money, description: str
   }
   if (!amount.isPositive()) return 'card_purchase';
   // Crédito no cartão que não veio rotulado: pagamento da fatura ou estorno.
-  return BILL.test(description) || t.categoryId === '05100000' ? 'bill_payment' : 'refund';
+  return BILL.test(description) || CARD_PAYMENT_CREDIT.test(description) || t.categoryId === '05100000'
+    ? 'bill_payment'
+    : 'refund';
 }
 
 function bankPaymentMethod(t: PluggyTransaction, description: string): PaymentMethod {

@@ -181,16 +181,22 @@ button.link {
 @media (max-width: 760px) {
   .shell {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr auto;
   }
+  /* Barra inferior fixa, sempre acima do conteúdo (os cartões têm posição própria por causa do hover). */
   .nav {
-    order: 2;
-    position: sticky;
+    position: fixed;
+    left: 0;
+    right: 0;
     bottom: 0;
+    z-index: 50;
     flex-direction: row;
     overflow-x: auto;
     border-right: none;
     border-top: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    box-shadow: 0 -8px 24px -16px color-mix(in srgb, #000 40%, transparent);
     padding: var(--space-2) var(--space-3) calc(var(--space-2) + env(safe-area-inset-bottom));
   }
   .brand {
@@ -200,7 +206,7 @@ button.link {
     white-space: nowrap;
   }
   .content {
-    padding: var(--space-4);
+    padding: var(--space-4) var(--space-4) calc(var(--space-6) + 56px + env(safe-area-inset-bottom));
   }
 }
 

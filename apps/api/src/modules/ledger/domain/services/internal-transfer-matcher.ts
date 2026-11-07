@@ -38,6 +38,9 @@ const DEFAULT_OPTIONS: MatcherOptions = { transferWindowDays: 3, billPaymentWind
  *   ou histórico começando em datas diferentes). O par só LIGA as pontas.
  * - Com documento informado, ele precisa bater com o TITULAR da conta da outra ponta. Isso desempata
  *   cadeias no mesmo dia (PJ → PF: quem recebe na conta PF viu o CNPJ pagando).
+ * - Pagamento de fatura: o crédito no cartão com o MESMO valor, numa janela curta, é prova suficiente.
+ *   A saída pode ser Pix/TED/boleto para o CNPJ do emissor (ou sem documento); o documento não é exigido.
+ *   Saídas mais fortes (débito de fatura do banco, documento próprio) são tentadas primeiro.
  * - Empate entre candidatos igualmente prováveis: não liga e reporta como ambíguo.
  * - Decisões manuais e ligações existentes nunca são alteradas (idempotente).
  */
@@ -50,8 +53,13 @@ export class InternalTransferMatcher {
     const open = transactions.filter((t) => t.transferLink === undefined && t.classificationSource !== 'manual');
 
     const outflows = open
-      .filter((t) => t.direction === 'outflow' && context.canBeTransferSide(t))
-      .sort((a, b) => a.occurredOn.toString().localeCompare(b.occurredOn.toString()) || a.id.localeCompare(b.id));
+      .filter((t) => t.direction === 'outflow' && (context.canBeTransferSide(t) || context.canPayCardBill(t)))
+      .sort(
+        (a, b) =>
+          context.strength(a) - context.strength(b) ||
+          a.occurredOn.toString().localeCompare(b.occurredOn.toString()) ||
+          a.id.localeCompare(b.id),
+      );
     const inflows = open.filter((t) => t.direction === 'inflow' && context.canBeTransferSide(t));
 
     const pairs: TransferPair[] = [];
@@ -102,11 +110,13 @@ export class InternalTransferMatcher {
     const window = billPayment ? this.options.billPaymentWindowDays : this.options.transferWindowDays;
     if (outflow.occurredOn.daysBetween(inflow.occurredOn) > window) return false;
 
+    if (billPayment) return context.canPayCardBill(outflow);
+    if (!context.canBeTransferSide(outflow)) return false;
+
     // Com documento informado, ele precisa ser o do titular da conta da outra ponta.
     if (!context.documentFits(inflow.counterparty?.document, outflow.accountId)) return false;
     if (!context.documentFits(outflow.counterparty?.document, inflow.accountId)) return false;
 
-    if (billPayment) return outflow.paymentMethod === 'bill_payment' || context.involvesOwnDocument(outflow);
     return context.involvesOwnDocument(outflow) || context.involvesOwnDocument(inflow);
   }
 }
@@ -144,6 +154,20 @@ class MatchContext {
     if (!this.isTransferOperation(t)) return false;
     const document = t.counterparty?.document;
     return !document || document.isMasked || this.involvesOwnDocument(t);
+  }
+
+  /** Saída de conta (não cartão) que pode ter pago uma fatura: débito de fatura, Pix, TED/DOC ou boleto. */
+  canPayCardBill(t: Transaction): boolean {
+    return (
+      t.direction === 'outflow' &&
+      !this.accountsById.get(t.accountId)?.isCreditCard &&
+      (t.paymentMethod === 'bill_payment' || t.paymentMethod === 'boleto' || this.isTransferOperation(t))
+    );
+  }
+
+  /** Ordem de tentativa: débito de fatura e documento próprio (0) antes de evidências mais fracas (1). */
+  strength(t: Transaction): number {
+    return t.paymentMethod === 'bill_payment' || this.involvesOwnDocument(t) ? 0 : 1;
   }
 
   /** Sem documento (ou mascarado) não restringe; com documento completo, precisa ser o titular da conta. */

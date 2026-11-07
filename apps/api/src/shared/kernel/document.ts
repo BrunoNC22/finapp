@@ -35,8 +35,13 @@ export class Document {
     return this.value.includes('*');
   }
 
+  /**
+   * Mesma pessoa/empresa. Só vale entre documentos completos. No CPF, comparam-se os 9 dígitos da
+   * base: os 2 últimos são verificadores (calculados a partir da base) e há bancos que os mandam errados.
+   */
   isSameAs(other: Document): boolean {
-    return !this.isMasked && !other.isMasked && this.type === other.type && this.value === other.value;
+    if (this.isMasked || other.isMasked || this.type !== other.type) return false;
+    return this.type === 'CPF' ? this.value.slice(0, 9) === other.value.slice(0, 9) : this.value === other.value;
   }
 
   toString(): string {
