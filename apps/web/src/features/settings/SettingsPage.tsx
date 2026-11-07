@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
 import { useServices } from '../../app/services';
 import { formatDate } from '../../lib/format';
+import { type ThemePreference, theme } from '../../lib/theme';
 
 const METHOD: Record<string, string> = { password: 'senha', passkey: 'digital', setup: 'primeiro acesso' };
 
@@ -71,6 +72,18 @@ export function SettingsPage() {
         ) : (
           <p className="hint">Este aparelho/navegador não oferece digital.</p>
         )}
+      </article>
+
+      <article className="card">
+        <h2>Aparência</h2>
+        <label>
+          Tema
+          <select defaultValue={theme.get()} onChange={(e) => theme.set(e.target.value as ThemePreference)}>
+            <option value="system">Igual ao sistema</option>
+            <option value="light">Claro</option>
+            <option value="dark">Escuro</option>
+          </select>
+        </label>
       </article>
 
       <article className="card">

@@ -14,7 +14,9 @@
     "@finapp/contracts": "workspace:*",
     "@simplewebauthn/browser": "^14.0.0",
     "@tanstack/react-query": "^5.107.0",
+    "chart.js": "^4.6.1",
     "react": "^19.3.1",
+    "react-chartjs-2": "^5.3.1",
     "react-dom": "^19.3.1",
     "react-router": "^8.5.1",
     "zod": "^4.6.7"

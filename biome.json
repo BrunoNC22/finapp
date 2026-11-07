@@ -48,5 +48,35 @@
         }
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["apps/web/src/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "chart.js": "Importe os gr\u00e1ficos de \"@/lib/charts\" (toda a configura\u00e7\u00e3o fica em chart-config.ts).",
+                  "react-chartjs-2": "Importe os gr\u00e1ficos de \"@/lib/charts\" (toda a configura\u00e7\u00e3o fica em chart-config.ts)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/web/src/lib/charts/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off"
+          }
+        }
+      }
+    }
+  ]
 }

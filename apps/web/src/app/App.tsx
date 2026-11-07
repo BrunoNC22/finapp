@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router';
 import { LoginPage } from '../features/auth/LoginPage';
+import { ChartsPreview } from '../features/dev/ChartsPreview';
 import { SettingsPage } from '../features/settings/SettingsPage';
 import { AppShell, Placeholder } from './AppShell';
 import { useServices, useSession } from './services';
@@ -15,6 +16,8 @@ export function App() {
     return () => clearInterval(timer);
   }, [session]);
 
+  // Só em desenvolvimento: revisão visual dos gráficos (dados fictícios), sem login.
+  if (import.meta.env.DEV && window.location.pathname === '/dev/charts') return <ChartsPreview />;
   if (state.status === 'signed-out') return <LoginPage expired={state.reason === 'expired'} />;
 
   return (
