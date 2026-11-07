@@ -2,14 +2,33 @@
   "name": "api",
   "private": true,
   "license": "MIT",
+  "type": "module",
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js"
   },
   "devDependencies": {
+    "@nestjs/testing": "^12.4.0",
+    "@swc/core": "^1.16.22",
     "@types/node": "^26.6.6",
     "typescript": "^7.0.2",
+    "unplugin-swc": "^2.0.0",
     "vitest": "^5.1.0"
+  },
+  "dependencies": {
+    "@nestjs/common": "^12.4.0",
+    "@nestjs/core": "^12.4.0",
+    "@nestjs/platform-fastify": "^12.4.0",
+    "fastify": "^5.12.8",
+    "mongodb": "^7.8.0",
+    "nestjs-pino": "^5.3.1",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "zod": "^4.6.7"
   }
 }

@@ -10,6 +10,7 @@ docker compose up -d
 ```
 
 Guarde **duas** senhas fora da máquina (num gerenciador de senhas):
+
 - a frase-senha do cofre LUKS, sem a qual os dados locais são irrecuperáveis;
 - a senha do repositório restic, sem a qual os backups são irrecuperáveis.
 

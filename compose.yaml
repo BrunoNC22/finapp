@@ -20,7 +20,28 @@ services:
     networks: [data]
     # Sem "ports": o Mongo não é acessível fora da rede interna do compose.
 
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: finapp-api:local
+    restart: unless-stopped
+    depends_on: [mongo]
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Até a #10 criar um usuário próprio da aplicação, a API usa o usuário root do Mongo.
+      MONGO_URL: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongo:27017/?authSource=admin
+      OPEN_FINANCE_PROVIDER: ${OPEN_FINANCE_PROVIDER:-demo}
+      PLUGGY_CLIENT_ID: ${PLUGGY_CLIENT_ID:-}
+      PLUGGY_CLIENT_SECRET: ${PLUGGY_CLIENT_SECRET:-}
+      PLUGGY_ITEM_IDS: ${PLUGGY_ITEM_IDS:-}
+    # "data": fala com o Mongo (rede interna). "egress": sai para a internet (Pluggy).
+    networks: [data, egress]
+    # Sem "ports": a exposição (só em 127.0.0.1 + tailscale serve) vem com a autenticação (#16/#21).
+
 networks:
   # Rede sem saída para a internet; a API entra nela e também numa rede externa.
   data:
     internal: true
+  egress: {}

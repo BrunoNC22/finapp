@@ -1,0 +1,14 @@
+# Nada de segredos, dados ou artefatos locais na imagem.
+**/node_modules
+**/dist
+**/coverage
+.git
+.github
+.env
+.env.*
+!.env.example
+data
+*.luks
+*.archive*
+CLAUDE.local.md
+docs

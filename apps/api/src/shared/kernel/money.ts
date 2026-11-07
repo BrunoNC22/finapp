@@ -1,4 +1,4 @@
-import { DomainError } from './domain-error';
+import { DomainError } from './domain-error.js';
 
 export class InvalidMoneyError extends DomainError {
   constructor(message: string) {
@@ -77,9 +77,7 @@ export class Money {
     const absolute = Math.abs(this.cents);
     const base = Math.floor(absolute / parts);
     const remainder = absolute % parts;
-    return Array.from({ length: parts }, (_, index) =>
-      Money.fromCents(sign * (base + (index < remainder ? 1 : 0))),
-    );
+    return Array.from({ length: parts }, (_, index) => Money.fromCents(sign * (base + (index < remainder ? 1 : 0))));
   }
 
   isZero(): boolean {

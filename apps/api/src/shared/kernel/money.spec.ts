@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { InvalidMoneyError, Money } from './money';
+import { InvalidMoneyError, Money } from './money.js';
 
 describe('Money', () => {
   describe('fromCents', () => {
@@ -82,7 +82,11 @@ describe('Money', () => {
 
   describe('allocate', () => {
     it('splits into equal parts when the amount divides evenly', () => {
-      expect(Money.fromCents(900).allocate(3).map((m) => m.cents)).toEqual([300, 300, 300]);
+      expect(
+        Money.fromCents(900)
+          .allocate(3)
+          .map((m) => m.cents),
+      ).toEqual([300, 300, 300]);
     });
 
     it('never loses cents: the remainder goes to the first parts', () => {

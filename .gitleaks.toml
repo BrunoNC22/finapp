@@ -33,5 +33,7 @@ keywords = ["agencia", "agência", "conta", "c/c"]
 [[rules]]
 id = "credenciais-open-finance-preenchidas"
 description = "Credencial da Pluggy com valor atribuído"
-regex = '''PLUGGY_CLIENT_(ID|SECRET)\s*[=:]\s*["']?[A-Za-z0-9-]{8,}'''
+# Só o formato de arquivo .env / shell (início de linha, com "="): é assim que um vazamento real aparece.
+# Não pega o nome da variável em código de validação nem valores fictícios curtos de teste.
+regex = '''(?m)^\s*(export\s+)?PLUGGY_CLIENT_(ID|SECRET)\s*=\s*["']?[A-Za-z0-9-]{16,}'''
 keywords = ["pluggy_client"]
