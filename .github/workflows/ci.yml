@@ -20,6 +20,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
+          # Mesma versão do hook local (allowlists exigem >= 8.25).
+          GITLEAKS_VERSION: 8.30.1
 
   quality:
     name: Lint, arquitetura, tipos, testes e build
