@@ -24,6 +24,8 @@ import {
   MongoSyncRunRepository,
 } from './infrastructure/mongo/mongo-ledger-adapters.js';
 import { MongoTransactionRepository } from './infrastructure/mongo/mongo-transaction-repository.js';
+import { PluggyClient } from './infrastructure/pluggy/pluggy-client.js';
+import { PluggyOpenFinanceProvider } from './infrastructure/pluggy/pluggy-open-finance-provider.js';
 import { SyncController } from './presentation/sync.controller.js';
 
 const mongo = <T>(provide: abstract new (...args: never[]) => T, make: (db: Db) => T) => ({
@@ -36,8 +38,10 @@ function openFinanceProvider(config: AppConfig, clock: Clock): OpenFinanceProvid
   switch (config.openFinance.provider) {
     case 'demo':
       return new DemoOpenFinanceProvider(clock);
-    case 'pluggy':
-      throw new Error('OPEN_FINANCE_PROVIDER=pluggy ainda não está disponível nesta versão');
+    case 'pluggy': {
+      const { clientId, clientSecret, itemIds } = config.openFinance;
+      return new PluggyOpenFinanceProvider(new PluggyClient({ clientId, clientSecret }), itemIds);
+    }
   }
 }
 
