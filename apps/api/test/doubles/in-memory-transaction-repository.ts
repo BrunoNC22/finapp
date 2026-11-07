@@ -22,6 +22,10 @@ export class InMemoryTransactionRepository extends TransactionRepository {
     for (const transaction of transactions) await this.save(transaction);
   }
 
+  async deleteMany(ids: readonly string[]): Promise<void> {
+    for (const id of ids) this.rows.delete(id);
+  }
+
   async findById(id: string): Promise<Transaction | undefined> {
     const row = this.rows.get(id);
     return row ? restore(row) : undefined;

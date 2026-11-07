@@ -133,6 +133,57 @@ describe('Transaction', () => {
     });
   });
 
+  describe('refresh from provider', () => {
+    it('updates what the provider owns (status, amount, description) and keeps the user decisions', () => {
+      const tx = aTransaction().withStatus('pending').withAmount(-1000).withDescription('COMPRA').build();
+      tx.categorize('cat-manual', 'manual');
+      tx.classifyManually('expense');
+
+      tx.refreshFromProvider({
+        ...tx.snapshot().props,
+        status: 'posted',
+        amount: Money.fromCents(-1050),
+        description: 'COMPRA LTDA',
+      });
+
+      expect(tx.status).toBe('posted');
+      expect(tx.amount.cents).toBe(-1050);
+      expect(tx.description).toBe('COMPRA LTDA');
+      expect(tx.category).toEqual({ categoryId: 'cat-manual', source: 'manual' });
+      expect(tx.classificationSource).toBe('manual');
+    });
+
+    it('recomputes the default classification when nobody decided it yet', () => {
+      const tx = aTransaction().withAmount(-1000).build();
+      tx.refreshFromProvider({ ...tx.snapshot().props, amount: Money.fromCents(1000), paymentMethod: 'refund' });
+      expect(tx.classification).toBe('expense');
+      expect(tx.classificationSource).toBe('default');
+    });
+
+    it('cannot change identity fields', () => {
+      const tx = aTransaction().build();
+      expect(() => tx.refreshFromProvider({ ...tx.snapshot().props, externalId: 'other' })).toThrow(
+        InvalidTransactionError,
+      );
+      expect(() => tx.refreshFromProvider({ ...tx.snapshot().props, accountId: 'other' })).toThrow(
+        InvalidTransactionError,
+      );
+    });
+
+    it('can inherit the user decisions of a pending transaction that the provider replaced', () => {
+      const pending = aTransaction().withStatus('pending').build();
+      pending.categorize('cat-manual', 'manual');
+      pending.classifyManually('ignored');
+      const posted = aTransaction().withStatus('posted').build();
+
+      posted.inheritUserDecisionsFrom(pending);
+
+      expect(posted.category).toEqual({ categoryId: 'cat-manual', source: 'manual' });
+      expect(posted.classification).toBe('ignored');
+      expect(posted.classificationSource).toBe('manual');
+    });
+  });
+
   describe('invariants', () => {
     it('requires an account, an external id and a description', () => {
       expect(() => aTransaction().withAccount('').build()).toThrow(InvalidTransactionError);

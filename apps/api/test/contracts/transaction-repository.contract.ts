@@ -71,6 +71,13 @@ export function transactionRepositoryContract(name: string, makeRepository: () =
       expect((await repository.findById('tx-copy'))?.category).toBeUndefined();
     });
 
+    it('deletes by id', async () => {
+      await repository.saveMany([aTransaction().withId('tx-del').build(), aTransaction().withId('tx-keep').build()]);
+      await repository.deleteMany(['tx-del', 'missing']);
+      expect(await repository.findById('tx-del')).toBeUndefined();
+      expect(await repository.findById('tx-keep')).toBeDefined();
+    });
+
     it('finds by external id within an account only', async () => {
       await repository.saveMany([
         aTransaction().withId('tx-a').withAccount('acc-a').withExternalId('same').build(),

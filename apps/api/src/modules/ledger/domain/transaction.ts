@@ -74,7 +74,7 @@ const CATEGORY_PRECEDENCE: Record<CategorySource, number> = { provider: 0, rule:
  */
 export class Transaction {
   private constructor(
-    private readonly props: TransactionProps,
+    private props: TransactionProps,
     private state: TransactionState,
   ) {}
 
@@ -214,6 +214,34 @@ export class Transaction {
    * Atribui uma categoria respeitando a precedência manual > regra > provedor.
    * Retorna false se uma decisão de precedência maior já existir.
    */
+  /**
+   * Atualiza os dados que pertencem ao provedor (status, valor, descrição, data…) preservando as
+   * decisões do usuário. A classificação padrão é recalculada se ninguém decidiu ainda.
+   */
+  refreshFromProvider(props: TransactionProps): void {
+    if (
+      props.id !== this.props.id ||
+      props.accountId !== this.props.accountId ||
+      props.externalId !== this.props.externalId
+    ) {
+      throw new InvalidTransactionError('a atualização do provedor não pode mudar a identidade da transação');
+    }
+    Transaction.validate(props);
+    this.props = props;
+    if (this.state.classificationSource === 'default') {
+      this.state = { ...this.state, classification: Transaction.defaultClassification(props) };
+    }
+  }
+
+  /**
+   * O provedor pode apagar uma transação pendente e recriá-la (com outro id) ao lançá-la.
+   * A nova herda as decisões MANUAIS da antiga (categoria e classificação).
+   */
+  inheritUserDecisionsFrom(previous: Transaction): void {
+    if (previous.category?.source === 'manual') this.categorize(previous.category.categoryId, 'manual');
+    if (previous.classificationSource === 'manual') this.classifyManually(previous.classification);
+  }
+
   /** Remove a categoria automática (regra ou provedor) para recalcular. A manual é preservada. */
   clearAutomaticCategory(): void {
     if (!this.state.category || this.state.category.source === 'manual') return;

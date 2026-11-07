@@ -14,6 +14,7 @@ export abstract class TransactionRepository {
   /** Insere ou substitui pela identidade (`id`). */
   abstract save(transaction: Transaction): Promise<void>;
   abstract saveMany(transactions: readonly Transaction[]): Promise<void>;
+  abstract deleteMany(ids: readonly string[]): Promise<void>;
   abstract findById(id: string): Promise<Transaction | undefined>;
   abstract findByExternalId(accountId: string, externalId: string): Promise<Transaction | undefined>;
   /** Ordenadas por data (mais antigas primeiro). */
