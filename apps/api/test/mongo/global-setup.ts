@@ -9,11 +9,19 @@ import type { TestProject } from 'vitest/node';
 let container: StartedTestContainer | undefined;
 
 export async function setup(project: TestProject): Promise<void> {
-  container = await new GenericContainer('mongo:8.0')
-    .withExposedPorts(27017)
-    .withWaitStrategy(Wait.forLogMessage(/Waiting for connections/))
-    .withStartupTimeout(120_000)
-    .start();
+  const logs: string[] = [];
+  try {
+    container = await new GenericContainer('mongo:8.0')
+      .withExposedPorts(27017)
+      .withWaitStrategy(Wait.forLogMessage(/Waiting for connections/))
+      .withStartupTimeout(120_000)
+      .withLogConsumer((stream) => stream.on('data', (line: Buffer | string) => logs.push(String(line))))
+      .start();
+  } catch (error) {
+    // Diagnóstico: últimas linhas do mongod (não há dados reais aqui, é um banco descartável).
+    console.error(`MongoDB de teste não subiu. Últimas linhas do log:\n${logs.slice(-25).join('')}`);
+    throw error;
+  }
   project.provide('mongoUrl', `mongodb://${container.getHost()}:${container.getMappedPort(27017)}`);
 }
 
