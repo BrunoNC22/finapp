@@ -19,7 +19,7 @@ import { MongoTransactionRepository } from './mongo-transaction-repository.js';
 let mongo: TestMongo;
 beforeAll(async () => {
   mongo = await TestMongo.start();
-}, 180_000);
+});
 afterAll(async () => {
   await mongo?.stop();
 });

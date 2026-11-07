@@ -7,8 +7,9 @@ export default defineConfig({
   plugins: [swc.vite({ module: { type: 'es6' } })],
   test: {
     include: ['src/**/*.spec.ts', 'src/**/*.e2e-spec.ts', 'src/**/*.int-spec.ts', 'test/**/*.spec.ts'],
-    // Containers de teste (Testcontainers) levam alguns segundos para subir.
-    hookTimeout: 180_000,
+    // Um único MongoDB descartável (Testcontainers) para a execução inteira.
+    globalSetup: ['test/mongo/global-setup.ts'],
+    hookTimeout: 60_000,
     environment: 'node',
     // Testes não podem depender de ordem nem de estado compartilhado.
     sequence: { shuffle: true },

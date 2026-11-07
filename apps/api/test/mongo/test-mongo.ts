@@ -1,37 +1,29 @@
-import { MongoDBContainer, type StartedMongoDBContainer } from '@testcontainers/mongodb';
+import { randomUUID } from 'node:crypto';
 import { type Db, MongoClient } from 'mongodb';
+import { inject } from 'vitest';
 
 /**
- * MongoDB descartável para testes de integração (Testcontainers).
- * NUNCA aponta para o banco do cofre: cada arquivo de teste sobe o próprio container,
- * e cada teste pode pedir um banco novo e vazio.
+ * Acesso ao MongoDB descartável da execução de testes (iniciado em global-setup.ts).
+ * Cada `freshDb()` devolve um banco novo e vazio, então os testes não interferem entre si.
  */
 export class TestMongo {
-  private counter = 0;
-
-  private constructor(
-    private readonly container: StartedMongoDBContainer,
-    readonly client: MongoClient,
-  ) {}
+  private constructor(readonly client: MongoClient) {}
 
   static async start(): Promise<TestMongo> {
-    const container = await new MongoDBContainer('mongo:8.0').start();
-    const client = new MongoClient(`${container.getConnectionString()}?directConnection=true`);
+    const client = new MongoClient(inject('mongoUrl'));
     await client.connect();
-    return new TestMongo(container, client);
-  }
-
-  /** Banco novo e vazio. */
-  freshDb(): Db {
-    return this.client.db(`test_${process.pid}_${++this.counter}`);
+    return new TestMongo(client);
   }
 
   get url(): string {
-    return `${this.container.getConnectionString()}?directConnection=true`;
+    return inject('mongoUrl');
+  }
+
+  freshDb(): Db {
+    return this.client.db(`test_${randomUUID().slice(0, 8)}`);
   }
 
   async stop(): Promise<void> {
     await this.client.close();
-    await this.container.stop();
   }
 }

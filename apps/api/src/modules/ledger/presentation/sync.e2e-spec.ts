@@ -13,13 +13,14 @@ import { LedgerModule } from '../ledger.module.js';
 describe('sync endpoints (demo provider, real MongoDB)', () => {
   let mongo: TestMongo;
   let app: NestFastifyApplication;
+  const dbName = `e2e_sync_${Date.now()}`;
   const clock = new FixedClock(new Date('2026-11-07T15:00:00Z'));
 
   beforeAll(async () => {
     mongo = await TestMongo.start();
     const config = AppConfig.fromEnv({
       MONGO_URL: mongo.url,
-      MONGO_DB_NAME: 'e2e_sync',
+      MONGO_DB_NAME: dbName,
       OPEN_FINANCE_PROVIDER: 'demo',
     });
     const moduleRef = await Test.createTestingModule({ imports: [ConfigModule, MongoModule, LedgerModule] })
@@ -32,7 +33,7 @@ describe('sync endpoints (demo provider, real MongoDB)', () => {
       moduleRef.createNestApplication<NestFastifyApplication>(createFastifyAdapter(), { logger: false }),
     );
     await app.get(LedgerModule).ready;
-  }, 180_000);
+  });
 
   afterAll(async () => {
     await app?.close();
@@ -40,7 +41,7 @@ describe('sync endpoints (demo provider, real MongoDB)', () => {
   });
 
   it('seeds the default taxonomy on startup', async () => {
-    expect(await mongo.client.db('e2e_sync').collection('categories').countDocuments()).toBeGreaterThan(40);
+    expect(await mongo.client.db(dbName).collection('categories').countDocuments()).toBeGreaterThan(40);
   });
 
   it('POST /sync imports, reconciles and returns a summary without transaction data', async () => {
@@ -49,7 +50,12 @@ describe('sync endpoints (demo provider, real MongoDB)', () => {
     expect(response.statusCode).toBe(200);
     const run = response.json();
     expect(run.status).toBe('success');
-    expect(run.transferPairs).toBeGreaterThan(30);
+    // Independe da ordem dos testes: os pares ficam ligados no banco, seja qual for a execução que os criou.
+    const linked = await mongo.client
+      .db(dbName)
+      .collection('transactions')
+      .countDocuments({ transferLink: { $exists: true } });
+    expect(linked).toBeGreaterThan(60);
     expect(JSON.stringify(run)).not.toMatch(/description|amount/i);
   });
 
