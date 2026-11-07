@@ -214,6 +214,13 @@ export class Transaction {
    * Atribui uma categoria respeitando a precedência manual > regra > provedor.
    * Retorna false se uma decisão de precedência maior já existir.
    */
+  /** Remove a categoria automática (regra ou provedor) para recalcular. A manual é preservada. */
+  clearAutomaticCategory(): void {
+    if (!this.state.category || this.state.category.source === 'manual') return;
+    const { category: _removed, ...rest } = this.state;
+    this.state = rest;
+  }
+
   categorize(categoryId: string, source: CategorySource): boolean {
     const current = this.state.category;
     if (current && CATEGORY_PRECEDENCE[current.source] > CATEGORY_PRECEDENCE[source]) return false;

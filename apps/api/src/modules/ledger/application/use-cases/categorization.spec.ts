@@ -1,0 +1,137 @@
+import { beforeEach, describe, expect, it } from 'vitest';
+import { aTransaction } from '../../../../../test/builders/transaction.builder.js';
+import {
+  InMemoryCategorizationRuleRepository,
+  InMemoryCategoryRepository,
+  StubProviderCategoryMap,
+} from '../../../../../test/doubles/in-memory-categorization.js';
+import { InMemoryTransactionRepository } from '../../../../../test/doubles/in-memory-transaction-repository.js';
+import { SequentialIdGenerator } from '../../../../../test/doubles/sequential-id-generator.js';
+import { LocalDate } from '../../../../shared/kernel/local-date.js';
+import { Categorizer } from '../../domain/categorization/categorizer.js';
+import { DEFAULT_CATEGORIES } from '../../domain/categorization/default-taxonomy.js';
+import {
+  CategorizeTransactionManually,
+  CreateCategorizationRule,
+  SeedDefaultCategorization,
+  UnknownCategoryError,
+} from './categorization.js';
+
+describe('categorization use cases', () => {
+  let categories: InMemoryCategoryRepository;
+  let rules: InMemoryCategorizationRuleRepository;
+  let transactions: InMemoryTransactionRepository;
+  const categorizer = new Categorizer(new StubProviderCategoryMap({ 'prov-gym': 'lazer.esportes' }));
+
+  beforeEach(async () => {
+    categories = new InMemoryCategoryRepository();
+    rules = new InMemoryCategorizationRuleRepository();
+    transactions = new InMemoryTransactionRepository();
+    await new SeedDefaultCategorization(categories, rules).execute();
+  });
+
+  describe('SeedDefaultCategorization', () => {
+    it('creates the default taxonomy and default rules', async () => {
+      expect(await categories.findAll()).toHaveLength(DEFAULT_CATEGORIES.length);
+      expect((await rules.findAll()).length).toBeGreaterThan(0);
+    });
+
+    it('is idempotent and never overwrites what the user changed', async () => {
+      const groceries = await categories.findById('alimentacao.mercado');
+      groceries?.rename('Supermercado');
+      if (groceries) await categories.save(groceries);
+      const [defaultRule] = await rules.findAll();
+
+      const report = await new SeedDefaultCategorization(categories, rules).execute();
+
+      expect(report).toEqual({ categoriesCreated: 0, rulesCreated: 0 });
+      expect((await categories.findById('alimentacao.mercado'))?.name).toBe('Supermercado');
+      expect(await rules.findAll()).toHaveLength(1);
+      expect((await rules.findById(defaultRule?.id ?? ''))?.categoryId).toBe(defaultRule?.categoryId);
+    });
+  });
+
+  describe('CreateCategorizationRule', () => {
+    const period = { from: LocalDate.parse('2026-01-01'), to: LocalDate.parse('2026-12-31') };
+
+    it('saves the rule and, if asked, applies it to existing transactions (except manual ones)', async () => {
+      const pixToLandlord = aTransaction()
+        .withId('t1')
+        .withDescription('Pix enviado aluguel')
+        .withPaymentMethod('pix')
+        .on('2026-03-05')
+        .build();
+      const manual = aTransaction()
+        .withId('t2')
+        .withDescription('Pix enviado aluguel')
+        .withPaymentMethod('pix')
+        .on('2026-04-05')
+        .build();
+      manual.categorize('outros', 'manual');
+      await transactions.saveMany([pixToLandlord, manual]);
+
+      const useCase = new CreateCategorizationRule(
+        rules,
+        categories,
+        transactions,
+        categorizer,
+        new SequentialIdGenerator('rule'),
+      );
+      const result = await useCase.execute({
+        rule: {
+          name: 'Aluguel',
+          categoryId: 'moradia.aluguel',
+          priority: 10,
+          enabled: true,
+          descriptionContains: 'aluguel',
+        },
+        applyTo: period,
+      });
+
+      expect(result.ruleId).toBe('rule-1');
+      expect(result.affected).toBe(1);
+      expect((await transactions.findById('t1'))?.category).toEqual({ categoryId: 'moradia.aluguel', source: 'rule' });
+      expect((await transactions.findById('t2'))?.category?.source).toBe('manual');
+    });
+
+    it('rejects a rule pointing to an unknown or archived category', async () => {
+      const useCase = new CreateCategorizationRule(
+        rules,
+        categories,
+        transactions,
+        categorizer,
+        new SequentialIdGenerator(),
+      );
+      await expect(
+        useCase.execute({
+          rule: { name: 'x', categoryId: 'nao.existe', priority: 1, enabled: true, descriptionContains: 'x' },
+        }),
+      ).rejects.toThrow(UnknownCategoryError);
+    });
+  });
+
+  describe('CategorizeTransactionManually', () => {
+    it('sets a manual category that automation will not override', async () => {
+      await transactions.save(aTransaction().withId('t1').withProviderCategory('prov-gym').build());
+
+      await new CategorizeTransactionManually(transactions, categories).execute({
+        transactionId: 't1',
+        categoryId: 'transporte.app',
+      });
+      const tx = await transactions.findById('t1');
+      if (tx) categorizer.categorize([tx], await rules.findAll());
+
+      expect(tx?.category).toEqual({ categoryId: 'transporte.app', source: 'manual' });
+    });
+
+    it('rejects unknown categories', async () => {
+      await transactions.save(aTransaction().withId('t1').build());
+      await expect(
+        new CategorizeTransactionManually(transactions, categories).execute({
+          transactionId: 't1',
+          categoryId: 'nope',
+        }),
+      ).rejects.toThrow(UnknownCategoryError);
+    });
+  });
+});
