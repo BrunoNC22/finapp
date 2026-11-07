@@ -23,7 +23,7 @@ describe('chart-config', () => {
   it('applies the theme to Chart.js defaults', () => {
     applyChartTheme();
     expect(Chart.defaults.color).toBe('#555555');
-    expect(Chart.defaults.borderColor).toBe('#eeeeee');
+    expect(Chart.defaults.borderColor).toBe('rgba(238, 238, 238, 0.9)');
     expect(Chart.defaults.plugins.legend.position).toBe('bottom');
   });
 
@@ -36,6 +36,13 @@ describe('chart-config', () => {
     const tick = (moneyAxis.ticks as { callback: (v: number) => string }).callback(120000);
     expect(plain(tick)).toBe('R$ 1,2 mil');
     expect(monthLabels(['2026-09', '2026-10'])).toEqual(['set/26', 'out/26']);
+  });
+
+  it('applies transparency to theme colors', async () => {
+    const { withAlpha } = await import('./chart-config');
+    expect(withAlpha('#0f766e', 0.5)).toBe('rgba(15, 118, 110, 0.5)');
+    expect(withAlpha('#abc', 1)).toBe('rgba(170, 187, 204, 1)');
+    expect(withAlpha('rgb(1, 2, 3)', 0.2)).toBe('rgba(1, 2, 3, 0.2)');
   });
 
   it('a category always gets the same color; subcategories share the group color; none is gray', () => {

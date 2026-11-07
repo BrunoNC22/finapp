@@ -159,7 +159,7 @@ export class AuthService {
     if (!token) throw new AuthenticationError();
     const session = await this.deps.sessions.findByTokenHash(this.deps.tokens.hashOf(token));
     const now = this.deps.clock.now();
-    if (!session || !session.isActive(now, this.deps.policy)) throw new AuthenticationError();
+    if (!session?.isActive(now, this.deps.policy)) throw new AuthenticationError();
     session.touch(now);
     await this.deps.sessions.save(session);
     return session;

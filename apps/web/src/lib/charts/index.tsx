@@ -8,7 +8,20 @@ import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import { useThemeVersion } from '../theme';
 import { applyChartTheme, type Palette } from './chart-config';
 
-export { categoryColor, moneyAxis, moneyLabel, monthLabels, type Palette, readPalette } from './chart-config';
+export {
+  categoryAxis,
+  categoryColor,
+  categoryColors,
+  dataset,
+  moneyAxis,
+  moneyLabel,
+  monthLabels,
+  type Palette,
+  previewHover,
+  readPalette,
+  type SemanticColor,
+  withAlpha,
+} from './chart-config';
 
 /** Tema dos gráficos + paleta atual (para cores de datasets). */
 export function useChartTheme(): { palette: Palette; version: string } {

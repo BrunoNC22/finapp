@@ -223,3 +223,64 @@ select {
   height: 280px;
   width: 100%;
 }
+
+/* Cartões de gráfico: superfície com leve gradiente, borda luminosa e elevação no hover. */
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: var(--space-4);
+}
+.chart-card {
+  position: relative;
+  overflow: visible;
+  background:
+    radial-gradient(120% 80% at 0% 0%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 60%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 96%, var(--text) 4%), var(--surface));
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  box-shadow:
+    0 1px 2px color-mix(in srgb, #000 8%, transparent),
+    0 12px 32px -18px color-mix(in srgb, #000 35%, transparent);
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    border-color 220ms ease;
+  gap: var(--space-1);
+}
+.chart-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  box-shadow:
+    0 1px 2px color-mix(in srgb, #000 8%, transparent),
+    0 22px 44px -20px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.chart-card.wide {
+  grid-column: 1 / -1;
+}
+.chart-card h2 {
+  margin: 0;
+}
+.chart-card .chart {
+  margin-top: var(--space-3);
+}
+.preview {
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-5);
+}
+.preview-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: end;
+  gap: var(--space-3);
+}
+.preview-header h1 {
+  margin: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chart-card,
+  .chart-card:hover {
+    transition: none;
+    transform: none;
+  }
+}
