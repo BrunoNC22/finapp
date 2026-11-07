@@ -11,7 +11,7 @@ let container: StartedTestContainer | undefined;
 export async function setup(project: TestProject): Promise<void> {
   const logs: string[] = [];
   try {
-    container = await new GenericContainer('mongo:8.0.34') // mesma versão da instância (veja compose.yaml)
+    container = await new GenericContainer(process.env.MONGO_TEST_IMAGE ?? 'mongo:8.0.34') // mesma versão da instância (compose.yaml)
       .withExposedPorts(27017)
       .withWaitStrategy(Wait.forLogMessage(/Waiting for connections/))
       .withStartupTimeout(120_000)

@@ -25,8 +25,11 @@ jobs:
 
   quality:
     name: Lint, arquitetura, tipos, testes e build
-    runs-on: ubuntu-latest
+    # Kernel < 6.19: o MongoDB 8.0 recusa kernels 6.19+ ainda sem a correção de rseq
+    # (SERVER-121912). Os testes de integração usam a mesma versão da instância.
+    runs-on: ubuntu-22.04
     steps:
+      - run: uname -r
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
