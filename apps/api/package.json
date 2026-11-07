@@ -13,7 +13,9 @@
   "devDependencies": {
     "@nestjs/testing": "^12.4.0",
     "@swc/core": "^1.16.22",
+    "@testcontainers/mongodb": "^12.2.1",
     "@types/node": "^26.6.6",
+    "testcontainers": "^12.2.1",
     "typescript": "^7.0.2",
     "unplugin-swc": "^2.0.0",
     "vitest": "^5.1.0"

@@ -6,6 +6,8 @@
 cp .env.example .env        # preencha caminhos e senhas; chmod 600 .env
 sudo scripts/vault.sh create
 restic init                 # com RESTIC_REPOSITORY / RESTIC_PASSWORD_FILE exportados
+docker compose up -d mongo
+scripts/mongo-app-user.sh   # usuário da aplicação (só acesso ao banco da app)
 docker compose up -d
 ```
 

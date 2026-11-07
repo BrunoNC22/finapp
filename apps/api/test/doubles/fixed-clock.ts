@@ -8,6 +8,10 @@ export class FixedClock extends Clock {
   now(): Date {
     return new Date(this.instant);
   }
+  advanceMinutes(minutes: number): void {
+    this.instant = new Date(this.instant.getTime() + minutes * 60_000);
+  }
+
   advanceDays(days: number): void {
     this.instant = new Date(this.instant.getTime() + days * 86_400_000);
   }

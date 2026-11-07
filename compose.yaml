@@ -30,8 +30,8 @@ services:
     environment:
       NODE_ENV: production
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      # Até a #10 criar um usuário próprio da aplicação, a API usa o usuário root do Mongo.
-      MONGO_URL: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongo:27017/?authSource=admin
+      # Usuário próprio da aplicação, com acesso só ao banco finapp (scripts/mongo-app-user.sh).
+      MONGO_URL: mongodb://${MONGO_APP_USER:?defina MONGO_APP_USER}:${MONGO_APP_PASSWORD:?defina MONGO_APP_PASSWORD}@mongo:27017/finapp?authSource=finapp
       OPEN_FINANCE_PROVIDER: ${OPEN_FINANCE_PROVIDER:-demo}
       PLUGGY_CLIENT_ID: ${PLUGGY_CLIENT_ID:-}
       PLUGGY_CLIENT_SECRET: ${PLUGGY_CLIENT_SECRET:-}

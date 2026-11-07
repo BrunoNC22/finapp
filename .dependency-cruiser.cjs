@@ -11,7 +11,7 @@ module.exports = {
       comment: 'O domínio é TypeScript puro: não depende de outras camadas, de frameworks nem de bibliotecas externas.',
       severity: 'error',
       // Specs ficam ao lado do código, mas podem usar builders, dublês e o Vitest.
-      from: { path: '(^|/)(domain|shared/kernel)/', pathNot: '\\.(spec|e2e-spec)\\.ts$' },
+      from: { path: '(^|/)(domain|shared/kernel)/', pathNot: '\\.(spec|e2e-spec|int-spec)\\.ts$' },
       to: {
         pathNot: ['(^|/)(domain|shared/kernel)/'],
       },
@@ -20,7 +20,7 @@ module.exports = {
       name: 'application-depends-only-on-domain',
       comment: 'Casos de uso dependem do domínio e de portas, nunca de adapters, de frameworks ou de drivers.',
       severity: 'error',
-      from: { path: '(^|/)application/', pathNot: '\\.(spec|e2e-spec)\\.ts$' },
+      from: { path: '(^|/)application/', pathNot: '\\.(spec|e2e-spec|int-spec)\\.ts$' },
       to: {
         path: [`(^|/)(infrastructure|presentation)/`, 'node_modules/(@nestjs|mongodb|fastify|nestjs-pino|pino)'],
       },
@@ -45,8 +45,8 @@ module.exports = {
     {
       name: 'no-test-code-in-production',
       severity: 'error',
-      from: { path: '^apps/api/src/', pathNot: '\\.(spec|e2e-spec)\\.ts$' },
-      to: { path: ['^apps/api/test/', '\\.(spec|e2e-spec)\\.ts$', 'node_modules/(vitest|@nestjs/testing)'] },
+      from: { path: '^apps/api/src/', pathNot: '\\.(spec|e2e-spec|int-spec)\\.ts$' },
+      to: { path: ['^apps/api/test/', '\\.(spec|e2e-spec|int-spec)\\.ts$', 'node_modules/(vitest|@nestjs/testing)'] },
     },
   ],
   options: {
