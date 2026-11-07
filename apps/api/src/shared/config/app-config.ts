@@ -36,6 +36,10 @@ const schema = z.object({
   MONGO_DB_NAME: optional(z.string().min(1).default('finapp')),
   OPEN_FINANCE_PROVIDER: optional(z.enum(['demo', 'pluggy']).default('demo')),
   SYNC_INTERVAL_HOURS: optional(z.coerce.number().min(0).max(168).default(6)),
+  SESSION_IDLE_MINUTES: optional(z.coerce.number().int().min(1).max(240).default(10)),
+  SESSION_MAX_HOURS: optional(z.coerce.number().int().min(1).max(72).default(12)),
+  WEBAUTHN_RP_ID: optional(z.string().min(1).default('localhost')),
+  WEBAUTHN_ORIGIN: optional(z.url().default('http://localhost:5173')),
   PLUGGY_CLIENT_ID: optional(z.string().optional()),
   PLUGGY_CLIENT_SECRET: optional(z.string().optional()),
   PLUGGY_ITEM_IDS: optional(z.string().optional()),
@@ -54,11 +58,17 @@ export class AppConfig {
     readonly openFinance: OpenFinanceConfig,
     /** Sincronização automática: intervalo em horas (0 = desligada). */
     readonly sync: { readonly intervalHours: number },
+    /** Sessão como app de banco: expira por inatividade, com limite absoluto. */
+    readonly session: { readonly idleMinutes: number; readonly maxHours: number },
+    /** WebAuthn (digital): domínio e origem exatos de onde o app é aberto. */
+    readonly webauthn: { readonly rpId: string; readonly origin: string },
   ) {
     Object.freeze(this.http);
     Object.freeze(this.mongo);
     Object.freeze(this.openFinance);
     Object.freeze(this.sync);
+    Object.freeze(this.session);
+    Object.freeze(this.webauthn);
     Object.freeze(this);
   }
 
@@ -95,6 +105,8 @@ export class AppConfig {
       { url: e.MONGO_URL as string, dbName: e.MONGO_DB_NAME },
       openFinance,
       { intervalHours: e.SYNC_INTERVAL_HOURS },
+      { idleMinutes: e.SESSION_IDLE_MINUTES, maxHours: e.SESSION_MAX_HOURS },
+      { rpId: e.WEBAUTHN_RP_ID, origin: e.WEBAUTHN_ORIGIN },
     );
   }
 

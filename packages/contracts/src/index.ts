@@ -240,3 +240,43 @@ export const MonthlyReportQuerySchema = z.object({
     .optional(),
 });
 export type MonthlyReportQuery = z.infer<typeof MonthlyReportQuerySchema>;
+
+// ------------------------------------------------------------------ autenticação
+const PasswordSchema = z.string().min(8).max(128);
+
+export const AuthStatusSchema = z.object({ ownerExists: z.boolean(), passkeys: z.number().int() });
+export type AuthStatusDto = z.infer<typeof AuthStatusSchema>;
+
+export const LoginResultSchema = z.object({ token: z.string(), expiresAfterIdleMinutes: z.number().int() });
+export type LoginResultDto = z.infer<typeof LoginResultSchema>;
+
+export const SetupCommandSchema = z.object({ setupToken: z.string().min(10), password: PasswordSchema });
+export type SetupCommand = z.infer<typeof SetupCommandSchema>;
+
+export const PasswordLoginCommandSchema = z.object({ password: z.string().min(1).max(128) });
+export type PasswordLoginCommand = z.infer<typeof PasswordLoginCommandSchema>;
+
+/** Resposta do navegador (navigator.credentials), repassada como veio ao verificador WebAuthn. */
+export const PasskeyLoginCommandSchema = z.object({ response: z.record(z.string(), z.unknown()) });
+export type PasskeyLoginCommand = z.infer<typeof PasskeyLoginCommandSchema>;
+
+export const PasskeyRegisterCommandSchema = z.object({
+  response: z.record(z.string(), z.unknown()),
+  label: z.string().trim().max(40).default('Digital'),
+});
+export type PasskeyRegisterCommand = z.infer<typeof PasskeyRegisterCommandSchema>;
+
+export const ChangePasswordCommandSchema = z.object({
+  currentPassword: z.string().min(1).max(128),
+  newPassword: PasswordSchema,
+});
+export type ChangePasswordCommand = z.infer<typeof ChangePasswordCommandSchema>;
+
+export const SessionSchema = z.object({
+  id: z.string(),
+  method: z.enum(['password', 'passkey', 'setup']),
+  createdAt: z.string(),
+  lastSeenAt: z.string(),
+  current: z.boolean(),
+});
+export type SessionDto = z.infer<typeof SessionSchema>;

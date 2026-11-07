@@ -15,6 +15,7 @@ Cada ADR registra **uma** decisão técnica: o contexto, o que foi decidido e as
 | [0009](0009-repositorio-publico-sem-dados-pessoais.md) | Repositório público sem dados pessoais                        | Aceito |
 | [0010](0010-plataforma-da-api.md)                      | NestJS 12 (ESM) sobre Fastify, TypeScript 7 e Biome           | Aceito |
 | [0011](0011-convencoes-do-livro-caixa.md)              | Convenções do livro-caixa: sinal, classificação e precedência | Aceito |
+| [0012](0012-autenticacao-estilo-app-de-banco.md)       | Autenticação no estilo app de banco                           | Aceito |
 
 ## Modelo
 
