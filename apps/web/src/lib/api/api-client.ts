@@ -121,8 +121,8 @@ export class ApiClient implements AuthApi, FinanceApi {
   installments() {
     return this.request('GET', '/installments', InstallmentPurchaseSchema.array());
   }
-  syncNow() {
-    return this.request('POST', '/sync', SyncRunSchema);
+  syncNow(options: { full?: boolean } = {}) {
+    return this.request('POST', '/sync', SyncRunSchema, options.full ? { full: true } : undefined);
   }
   syncRuns(limit: number) {
     return this.request('GET', `/sync/runs?limit=${limit}`, SyncRunSchema.array());

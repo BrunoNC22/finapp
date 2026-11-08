@@ -17,7 +17,8 @@ export interface FinanceApi {
   categorize(transactionId: string, categoryId: string): Promise<TransactionDto>;
   classify(transactionId: string, classification: TransactionDto['classification']): Promise<TransactionDto>;
   installments(): Promise<InstallmentPurchaseDto[]>;
-  syncNow(): Promise<SyncRunDto>;
+  /** `full`: revisita 12 meses (aplica regras melhoradas aos meses antigos). */
+  syncNow(options?: { full?: boolean }): Promise<SyncRunDto>;
   syncRuns(limit: number): Promise<SyncRunDto[]>;
   dismissRecurring(key: string): Promise<void>;
 }

@@ -62,16 +62,20 @@ export class SyncAccounts {
     this.initialMonths = deps.initialMonths ?? 12;
   }
 
-  async execute(): Promise<SyncRun> {
+  /**
+   * `full`: revisita a janela inicial inteira (12 meses) em todas as contas. Serve para aplicar
+   * regras de mapeamento/conciliação melhoradas aos meses antigos. Decisões manuais são preservadas.
+   */
+  async execute(options: { full?: boolean } = {}): Promise<SyncRun> {
     if (!(await this.deps.lock.acquire(LOCK_KEY, LOCK_TTL_MS))) throw new SyncInProgressError();
     try {
-      return await this.run();
+      return await this.run(options.full ?? false);
     } finally {
       await this.deps.lock.release(LOCK_KEY);
     }
   }
 
-  private async run(): Promise<SyncRun> {
+  private async run(full: boolean): Promise<SyncRun> {
     const startedAt = this.deps.clock.now();
     const today = LocalDate.fromInstant(startedAt, this.timeZone);
     const results: SyncAccountResult[] = [];
@@ -94,9 +98,10 @@ export class SyncAccounts {
       for (const providerAccount of providerAccounts) {
         try {
           const account = await this.upsertAccount(providerAccount);
-          const from = account.lastSyncedAt
-            ? LocalDate.fromInstant(account.lastSyncedAt, this.timeZone).addDays(-this.overlapDays)
-            : today.addMonths(-this.initialMonths);
+          const from =
+            account.lastSyncedAt && !full
+              ? LocalDate.fromInstant(account.lastSyncedAt, this.timeZone).addDays(-this.overlapDays)
+              : today.addMonths(-this.initialMonths);
           const received = await this.deps.provider.listTransactions(providerAccount.externalId, { from, to: today });
           results.push(await this.importTransactions(account, received, { from, to: today }));
           account.recordBalance(providerAccount.balance, startedAt, providerAccount.creditLimit);

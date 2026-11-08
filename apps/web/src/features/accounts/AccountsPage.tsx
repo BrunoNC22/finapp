@@ -30,11 +30,13 @@ export function AccountsPage() {
   const runs = useQuery({ queryKey: financeKeys.syncRuns, queryFn: () => finance.syncRuns(10) });
   const [message, setMessage] = useState<string | undefined>();
   const sync = useMutation({
-    mutationFn: () => finance.syncNow(),
-    onSuccess: (run) => {
+    mutationFn: (full: boolean) => finance.syncNow({ full }),
+    onSuccess: (run, full) => {
       setMessage(
         run.status === 'success'
-          ? 'Sincronização concluída.'
+          ? full
+            ? 'Histórico reprocessado: os últimos 12 meses foram revistos com as regras atuais.'
+            : 'Sincronização concluída.'
           : `Sincronização ${RUN_STATUS[run.status].toLowerCase()}. Veja o histórico abaixo.`,
       );
       void queryClient.invalidateQueries({ queryKey: financeKeys.all });
@@ -51,7 +53,7 @@ export function AccountsPage() {
     <section className="page" aria-labelledby="accounts-title">
       <header className="page-header">
         <h1 id="accounts-title">Contas</h1>
-        <button type="button" className="primary" onClick={() => sync.mutate()} disabled={sync.isPending}>
+        <button type="button" className="primary" onClick={() => sync.mutate(false)} disabled={sync.isPending}>
           {sync.isPending ? 'Sincronizando…' : 'Sincronizar agora'}
         </button>
       </header>
@@ -74,6 +76,18 @@ export function AccountsPage() {
           ))}
         </div>
       </QueryState>
+
+      <article className="card">
+        <h2>Reprocessar histórico</h2>
+        <p className="hint">
+          A sincronização normal revisita só o último mês. Depois de uma melhoria nas regras (transferências entre suas
+          contas, faturas, categorias), reprocesse para aplicá-la aos últimos 12 meses. Suas escolhas manuais são
+          mantidas. Leva cerca de um minuto.
+        </p>
+        <button type="button" onClick={() => sync.mutate(true)} disabled={sync.isPending}>
+          Reprocessar 12 meses
+        </button>
+      </article>
 
       <article className="card">
         <h2>Últimas sincronizações</h2>

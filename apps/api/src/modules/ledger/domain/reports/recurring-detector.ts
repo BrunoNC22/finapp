@@ -58,6 +58,8 @@ export class RecurringDetector {
       groups.set(identity.key, group);
     }
 
+    this.mergeVariantDescriptors(groups);
+
     const found: Recurring[] = [];
     for (const [key, { label, txs }] of groups) {
       if (dismissed.has(key) || txs.length < this.options.minOccurrences) continue;
@@ -119,10 +121,92 @@ export class RecurringDetector {
         ? { key: `doc:${fnv1a(document.value)}`, label: 'pix recorrente' }
         : undefined;
     }
-    const merchant = normalizeMerchant(t.description);
+    const merchant = withoutGatewayPrefix(normalizeMerchant(t.description));
     return merchant ? { key: `m:${merchant}`, label: merchant } : undefined;
   }
+
+  /**
+   * O descritor do cartão pode mudar de um mês para o outro (outro gateway, outro código). Grupos
+   * pequenos demais para serem detectados sozinhos, da MESMA categoria, são unidos quando a palavra
+   * principal ("marca") de um aparece no texto do outro. Grupos já grandes nunca são misturados.
+   */
+  private mergeVariantDescriptors(groups: Map<string, { label: string; txs: Transaction[] }>): void {
+    const small = () =>
+      [...groups.entries()]
+        .filter(([key, g]) => key.startsWith('m:') && g.txs.length < this.options.minOccurrences)
+        .map(([key, g]) => ({ key, group: g, category: mostCommon(categoriesOf(g.txs)), letters: lettersOf(key) }));
+    let merged = true;
+    while (merged) {
+      merged = false;
+      const candidates = small();
+      outer: for (const a of candidates) {
+        if (!a.category) continue;
+        for (const b of candidates) {
+          if (a.key === b.key || a.category !== b.category) continue;
+          if (!sameBrand(a.key, b.letters) && !sameBrand(b.key, a.letters)) continue;
+          // Fica a chave/rótulo do grupo maior (empate: o mais recente).
+          const [keep, drop] =
+            a.group.txs.length > b.group.txs.length ||
+            (a.group.txs.length === b.group.txs.length && latest(a.group.txs) >= latest(b.group.txs))
+              ? [a, b]
+              : [b, a];
+          keep.group.txs.push(...drop.group.txs);
+          groups.delete(drop.key);
+          merged = true;
+          break outer;
+        }
+      }
+    }
+  }
 }
+
+/** Códigos de 1–2 letras que gateways põem antes do nome ("EC LOJA", "DL LOJA"). */
+function withoutGatewayPrefix(merchant: string): string {
+  const words = merchant.split(' ');
+  return words.length >= 3 && (words[0]?.length ?? 0) <= 2 ? words.slice(1).join(' ') : merchant;
+}
+
+/** Palavras de localização comuns em descritores: não identificam o estabelecimento. */
+const PLACE_WORDS = new Set([
+  'sao',
+  'paulo',
+  'rio',
+  'janeiro',
+  'brasil',
+  'bra',
+  'barueri',
+  'osasco',
+  'campinas',
+  'curitiba',
+  'belo',
+  'horizonte',
+  'internet',
+]);
+
+/** A palavra mais longa (≥ 6 letras, fora localização) do descritor. */
+function brandOf(key: string): string | undefined {
+  return key
+    .slice(2)
+    .split(' ')
+    .filter((w) => w.length >= 6 && !PLACE_WORDS.has(w))
+    .sort((a, b) => b.length - a.length)[0];
+}
+
+const lettersOf = (key: string) => key.slice(2).replace(/[^a-z]/g, '');
+
+function sameBrand(key: string, otherLetters: string): boolean {
+  const brand = brandOf(key);
+  return !!brand && otherLetters.includes(brand.slice(0, 6));
+}
+
+const categoriesOf = (txs: readonly Transaction[]) =>
+  txs.map((t) => t.category?.categoryId).filter((c): c is string => !!c);
+
+const latest = (txs: readonly Transaction[]) =>
+  txs
+    .map((t) => t.occurredOn.toString())
+    .sort()
+    .at(-1) ?? '';
 
 function mostCommon(values: readonly string[]): string | undefined {
   const counts = new Map<string, number>();

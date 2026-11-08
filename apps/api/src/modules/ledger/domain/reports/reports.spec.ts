@@ -137,6 +137,24 @@ describe('RecurringDetector', () => {
     expect(streaming?.annualCost.cents).toBe(47880);
   });
 
+  it('recognizes a subscription whose card descriptor changes every month (payment gateway prefixes)', () => {
+    const subscription = (day: string, description: string) =>
+      tx(day, -2990, { description, category: 'assinaturas.streaming' });
+    const txs = [
+      subscription('2026-08-08', 'PAYPAL STRM STREAMFL.IXPLUS SAO PAULO BRA'),
+      subscription('2026-09-10', 'EC STREAMFLIXPLUS SAO PAULO BRA'),
+      subscription('2026-10-07', 'DL STREAMFLIXPLUS SAO PAULO BRA'),
+      // Outra loja da mesma cidade e categoria: não pode ser misturada.
+      tx('2026-09-20', -2990, { description: 'EC OUTRAMARCA SAO PAULO BRA', category: 'assinaturas.streaming' }),
+    ];
+
+    const found = new RecurringDetector().detect(txs, LocalDate.parse('2026-11-08'));
+
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({ label: 'streamflixplus sao paulo bra', occurrences: 3 });
+    expect(found[0]?.nextExpectedOn.toString()).toBe('2026-11-07');
+  });
+
   it('tolerates small amount variations (±10%) and a few days of drift', () => {
     const txs = [
       tx('2026-07-05', -10000, { description: 'OPERADORA' }),

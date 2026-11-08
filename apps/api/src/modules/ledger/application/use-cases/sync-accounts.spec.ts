@@ -117,6 +117,30 @@ describe('SyncAccounts', () => {
     expect(provider.requestedRanges[1]).toEqual({ account: 'ext-card', from: '2026-10-03', to: '2026-11-17' });
   });
 
+  it('a full sync revisits the whole initial window, so improved rules reach older months', async () => {
+    const provider = new StubOpenFinanceProvider(
+      [card],
+      // Crédito de pagamento da fatura que um mapeamento antigo gravou como estorno (contava como gasto).
+      [providerTx('old', '2026-03-10', 15000, { paymentMethod: 'refund', description: 'PAGAMENTO EFETUADO' })],
+    );
+    const env = setup(provider);
+    await env.sync.execute();
+    env.clock.advanceDays(10);
+    provider.transactions = [
+      providerTx('old', '2026-03-10', 15000, { paymentMethod: 'bill_payment', description: 'PAGAMENTO EFETUADO' }),
+    ];
+
+    await env.sync.execute({ full: true });
+
+    expect(provider.requestedRanges[1]).toEqual({ account: 'ext-card', from: '2025-11-17', to: '2026-11-17' });
+    const [old] = await env.transactions.findInPeriod({
+      from: LocalDate.parse('2026-03-10'),
+      to: LocalDate.parse('2026-03-10'),
+    });
+    expect(old?.paymentMethod).toBe('bill_payment');
+    expect(old?.classification).toBe('internal_transfer');
+  });
+
   it('updates a transaction that changed at the provider and keeps the user decisions', async () => {
     const provider = new StubOpenFinanceProvider(
       [card],

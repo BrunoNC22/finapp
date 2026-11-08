@@ -75,4 +75,14 @@ describe('sync endpoints (demo provider, real MongoDB)', () => {
     expect([...startedAt].sort().reverse()).toEqual(startedAt);
     expect(runs[0].accounts.every((a: { created: number }) => a.created === 0)).toBe(true);
   });
+
+  it('POST /sync with { full: true } revisits the whole history and still creates nothing new; bad bodies are 400', async () => {
+    clock.advanceMinutes(5);
+    await app.inject({ method: 'POST', url: '/sync' });
+    clock.advanceMinutes(5);
+    const full = await app.inject({ method: 'POST', url: '/sync', payload: { full: true } });
+    expect(full.statusCode).toBe(200);
+    expect(full.json().accounts.every((a: { created: number }) => a.created === 0)).toBe(true);
+    expect((await app.inject({ method: 'POST', url: '/sync', payload: { full: 'sim' } })).statusCode).toBe(400);
+  });
 });

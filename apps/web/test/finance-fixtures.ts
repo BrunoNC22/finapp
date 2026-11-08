@@ -222,8 +222,8 @@ export class FakeFinanceApi implements FinanceApi {
   async installments() {
     return this.installmentList;
   }
-  async syncNow() {
-    this.calls.push('sync');
+  async syncNow(options: { full?: boolean } = {}) {
+    this.calls.push(options.full ? 'sync-full' : 'sync');
     if (this.syncBusy) throw new ApiError(409, 'sincronização em andamento');
     return SYNC_RUN;
   }

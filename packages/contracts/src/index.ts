@@ -174,6 +174,13 @@ export const UpdateCategoryCommandSchema = z
 export type UpdateCategoryCommand = z.infer<typeof UpdateCategoryCommandSchema>;
 
 // ------------------------------------------------------------------ sincronização
+/** POST /sync. `full`: revisita 12 meses (aplica regras melhoradas aos meses antigos). Corpo opcional. */
+export const SyncCommandSchema = z
+  .object({ full: z.boolean().default(false) })
+  .optional()
+  .transform((v) => v ?? { full: false });
+export type SyncCommand = z.input<typeof SyncCommandSchema>;
+
 export const SyncRunSchema = z.object({
   id: z.string(),
   startedAt: z.string(),

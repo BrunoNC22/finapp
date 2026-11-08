@@ -35,4 +35,11 @@ describe('AccountsPage', () => {
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Sincronizar agora' }));
     expect(await screen.findByText(/Já existe uma sincronização em andamento/)).toHaveAttribute('role', 'status');
   });
+
+  it('reprocesses the last 12 months on request', async () => {
+    const { finance } = renderWithServices(<AccountsPage />);
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Reprocessar 12 meses' }));
+    expect(await screen.findByText(/Histórico reprocessado/)).toHaveAttribute('role', 'status');
+    expect(finance.calls).toContain('sync-full');
+  });
 });
