@@ -13,6 +13,11 @@ export const financeKeys = {
   transactions: (search: object) => ['finance', 'transactions', search] as const,
   installments: ['finance', 'installments'] as const,
   syncRuns: ['finance', 'sync-runs'] as const,
+  incomeSources: ['finance', 'income-sources'] as const,
+  incomeOverview: (month: string) => ['finance', 'income-overview', month] as const,
+  goals: ['finance', 'goals'] as const,
+  goalPlan: ['finance', 'goal-plan'] as const,
+  requiredIncome: (deadline: string) => ['finance', 'required-income', deadline] as const,
 };
 
 export function useCategories(): CategoryDirectory {

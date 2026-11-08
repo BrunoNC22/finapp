@@ -843,3 +843,137 @@ select {
 .rank-side button.link {
   white-space: nowrap;
 }
+
+/* ===================================================================== renda e metas (#24) */
+.card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.card-header h2 {
+  margin: 0;
+}
+.form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  align-items: end;
+}
+.form-grid .span-all {
+  grid-column: 1 / -1;
+}
+.form-grid input,
+.form-grid select {
+  width: 100%;
+  min-width: 0;
+}
+fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+legend {
+  font-weight: 600;
+  padding: 0 var(--space-1);
+}
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-2);
+  align-items: end;
+}
+.cost-row {
+  grid-template-columns: 2fr 1fr 2fr auto;
+}
+.goal-preview {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+}
+.tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  justify-self: start;
+}
+.tabs button {
+  border: none;
+  background: none;
+  border-radius: 999px;
+  padding: 6px 16px;
+  color: var(--text-muted);
+}
+.tabs button.active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 3px color-mix(in srgb, #000 15%, transparent);
+}
+.goal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+  counter-reset: goal;
+}
+.goal-card {
+  gap: var(--space-2);
+  counter-increment: goal;
+}
+.goal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: var(--space-3);
+}
+.goal-head > div {
+  display: grid;
+}
+.goal-head strong::before {
+  content: counter(goal) ". ";
+  color: var(--text-muted);
+}
+.goal-actions button:not(.link) {
+  padding: 4px 12px;
+}
+.levers {
+  border-left: 3px solid var(--warning);
+  padding-left: var(--space-3);
+}
+.levers p,
+.levers ul {
+  margin: 0;
+}
+.levers ul {
+  padding-left: 1.1rem;
+  color: var(--text-muted);
+}
+.required-income .stat-value {
+  color: var(--income);
+}
+.suggestions h3 {
+  font-size: 0.95rem;
+  margin: var(--space-3) 0 0;
+}
+@media (max-width: 760px) {
+  .cost-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Cartão da renda-alvo: nunca mais largo que a tela; linhas quebram no celular. */
+.required-income {
+  min-width: 0;
+}
+.required-income .rank-list li {
+  flex-wrap: wrap;
+}
+.required-income .amount {
+  white-space: normal;
+}

@@ -3,20 +3,28 @@ import {
   type AuthStatusDto,
   AuthStatusSchema,
   CategorySchema,
+  type CreateIncomeSourceCommand,
+  type GoalCommand,
+  GoalPlanSchema,
+  GoalSchema,
+  IncomeOverviewSchema,
+  IncomeSourceSchema,
   InstallmentPurchaseSchema,
   type LoginResultDto,
   LoginResultSchema,
   MonthlyReportSchema,
+  RequiredIncomeSchema,
   type SessionDto,
   SessionSchema,
   SyncRunSchema,
   type TransactionDto,
   TransactionPageSchema,
   TransactionSchema,
+  type UpdateIncomeSourceCommand,
 } from '@finapp/contracts';
 import type { ZodType } from 'zod';
 import type { SessionStore } from '../session/session-store';
-import { type FinanceApi, searchToQueryString, type TransactionSearch } from './finance-api';
+import { type FinanceApi, type PlanQuery, searchToQueryString, type TransactionSearch } from './finance-api';
 
 export class ApiError extends Error {
   constructor(
@@ -142,6 +150,48 @@ export class ApiClient implements AuthApi, FinanceApi {
     await this.request('POST', `/reports/recurring/${encodeURIComponent(key)}/dismiss`);
   }
 
+  // ---------------------------------------------------------------- planejamento
+  incomeSources() {
+    return this.request('GET', '/income/sources', IncomeSourceSchema.array());
+  }
+  createIncomeSource(command: CreateIncomeSourceCommand) {
+    return this.request('POST', '/income/sources', IncomeSourceSchema, command);
+  }
+  updateIncomeSource(id: string, command: UpdateIncomeSourceCommand) {
+    return this.request('PATCH', `/income/sources/${encodeURIComponent(id)}`, IncomeSourceSchema, command);
+  }
+  async deleteIncomeSource(id: string) {
+    await this.request('DELETE', `/income/sources/${encodeURIComponent(id)}`);
+  }
+  incomeOverview(month: string, months = 24) {
+    return this.request(
+      'GET',
+      `/income/overview?month=${encodeURIComponent(month)}&months=${months}`,
+      IncomeOverviewSchema,
+    );
+  }
+  goals() {
+    return this.request('GET', '/goals', GoalSchema.array());
+  }
+  createGoal(command: GoalCommand) {
+    return this.request('POST', '/goals', GoalSchema, command);
+  }
+  replaceGoal(id: string, command: GoalCommand) {
+    return this.request('PUT', `/goals/${encodeURIComponent(id)}`, GoalSchema, command);
+  }
+  async deleteGoal(id: string) {
+    await this.request('DELETE', `/goals/${encodeURIComponent(id)}`);
+  }
+  async reorderGoals(ids: string[]) {
+    await this.request('POST', '/goals/order', undefined, { ids });
+  }
+  goalPlan(query: PlanQuery) {
+    return this.request('GET', `/goals/plan${planQueryString(query)}`, GoalPlanSchema);
+  }
+  requiredIncome(query: PlanQuery & { deadline?: string }) {
+    return this.request('GET', `/goals/required-income${planQueryString(query)}`, RequiredIncomeSchema);
+  }
+
   /** Requisição genérica. */
   async request<T = unknown>(method: string, path: string, schema?: ZodType<T>, body?: unknown): Promise<T> {
     const token = this.session.currentToken();
@@ -166,4 +216,14 @@ export class ApiClient implements AuthApi, FinanceApi {
     if (!parsed.success) throw new OutdatedAppError();
     return parsed.data;
   }
+}
+
+function planQueryString(query: PlanQuery & { deadline?: string }): string {
+  const params = new URLSearchParams();
+  if (query.months !== undefined) params.set('months', String(query.months));
+  if (query.startingSavingsCents !== undefined) params.set('startingSavingsCents', String(query.startingSavingsCents));
+  if (query.minSlackPercent !== undefined) params.set('minSlackPercent', String(query.minSlackPercent));
+  if (query.deadline) params.set('deadline', query.deadline);
+  const text = params.toString();
+  return text ? `?${text}` : '';
 }

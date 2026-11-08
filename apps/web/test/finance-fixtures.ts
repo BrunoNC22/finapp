@@ -1,14 +1,22 @@
 import type {
   AccountDto,
   CategoryDto,
+  CreateIncomeSourceCommand,
+  GoalCommand,
+  GoalDto,
+  GoalPlanDto,
+  IncomeOverviewDto,
+  IncomeSourceDto,
   InstallmentPurchaseDto,
   MonthlyReportDto,
+  RequiredIncomeDto,
   SyncRunDto,
   TransactionDto,
   TransactionPageDto,
+  UpdateIncomeSourceCommand,
 } from '@finapp/contracts';
 import { ApiError } from '../src/lib/api/api-client';
-import type { FinanceApi, TransactionSearch } from '../src/lib/api/finance-api';
+import type { FinanceApi, PlanQuery, TransactionSearch } from '../src/lib/api/finance-api';
 
 // Dados FICTÍCIOS para os testes das telas.
 export const brl = (cents: number) => ({ cents, currency: 'BRL' as const });
@@ -181,6 +189,159 @@ export const SYNC_RUN: SyncRunDto = {
   uncategorized: 1,
 };
 
+// ------------------------------------------------------------------ planejamento (fictício)
+const months = (from: string, count: number) => {
+  const [y, m] = from.split('-').map(Number) as [number, number];
+  return Array.from({ length: count }, (_, i) => {
+    const index = y * 12 + (m - 1) + i;
+    return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
+  });
+};
+
+export const INCOME_SOURCES: IncomeSourceDto[] = [
+  {
+    id: 's1',
+    name: 'Bolsa Exemplo',
+    kind: 'scholarship',
+    expectedMonthly: brl(90000),
+    startsOn: '2025-01',
+    endsOn: '2027-12',
+    risk: 'low',
+    status: 'active',
+    matcher: { counterpartyContains: 'fundacao exemplo' },
+  },
+  {
+    id: 's2',
+    name: 'Freela Exemplo',
+    kind: 'freelance',
+    expectedMonthly: brl(150000),
+    startsOn: '2025-07',
+    risk: 'high',
+    status: 'active',
+  },
+];
+
+export function anIncomeOverview(month = '2026-10'): IncomeOverviewDto {
+  const ms = months('2026-11', 24);
+  const scenario = (id: 'floor' | 'likely' | 'optimistic', name: string, cents: (i: number) => number) => ({
+    id,
+    name,
+    description: `Cenário ${name}`,
+    totals: ms.map((_, i) => brl(cents(i))),
+    bySource: [],
+  });
+  return {
+    month,
+    projection: {
+      months: ms,
+      scenarios: [
+        scenario('floor', 'Piso', (i) => (i < 14 ? 90000 : 0)),
+        scenario('likely', 'Provável', (i) => (i < 14 ? 90000 : 0)),
+        scenario('optimistic', 'Otimista', (i) => (i < 14 ? 240000 : 150000)),
+      ],
+    },
+    tracking: {
+      sources: [
+        { sourceId: 's1', expected: brl(90000), observed: brl(90000), status: 'paid' },
+        { sourceId: 's2', expected: brl(150000), observed: brl(70000), status: 'partial' },
+      ],
+      unrecognized: brl(30300),
+      suggestions: [{ name: 'Cliente Novo', months: 3, averageMonthly: brl(30000) }],
+    },
+  };
+}
+
+export const GOALS: GoalDto[] = [
+  {
+    id: 'g1',
+    name: 'Bicicleta elétrica',
+    kind: 'purchase',
+    price: brl(330000),
+    downPayment: brl(0),
+    oneTimeCosts: brl(30000),
+    financing: { kind: 'interest_free', installments: 12 },
+    recurringCosts: [{ name: 'manutenção', monthly: brl(8000), replacesCategoryId: 'alimentacao.delivery' }],
+    upfront: brl(30000),
+    installment: brl(27500),
+    totalCost: brl(360000),
+  },
+  {
+    id: 'g2',
+    name: 'Carteira de motorista',
+    kind: 'purchase',
+    price: brl(110000),
+    downPayment: brl(0),
+    oneTimeCosts: brl(0),
+    financing: { kind: 'cash' },
+    recurringCosts: [],
+    upfront: brl(110000),
+    installment: brl(0),
+    totalCost: brl(110000),
+  },
+];
+
+export function aPlan(): GoalPlanDto {
+  const ms = months('2026-11', 48);
+  const timeline = ms.map((month, i) => ({
+    month,
+    income: brl(200000),
+    spending: brl(150000),
+    surplus: brl(50000),
+    savings: brl(40000 + 50000 * (i + 1)),
+  }));
+  const goal = (goalId: string, extra: Partial<GoalPlanDto['scenarios'][number]['goals'][number]>) => ({
+    goalId,
+    status: 'scheduled' as const,
+    monthlyCost: brl(23500),
+    monthlyCostAfterPayments: brl(-1000),
+    alerts: [],
+    levers: [],
+    ...extra,
+  });
+  return {
+    months: ms,
+    startingSavings: brl(40000),
+    minSlackPercent: 10,
+    baseline: { monthlySpending: brl(150000), months: 6 },
+    scenarios: [
+      {
+        id: 'floor',
+        name: 'Piso',
+        goals: [
+          goal('g1', {
+            status: 'not_feasible',
+            monthlyGap: brl(50000),
+            levers: [
+              { kind: 'extra_income', amount: brl(50000) },
+              { kind: 'cut', categoryId: 'alimentacao.mercado', amount: brl(12000) },
+            ],
+          }),
+          goal('g2', { status: 'blocked' }),
+        ],
+        timeline,
+      },
+      {
+        id: 'likely',
+        name: 'Provável',
+        goals: [
+          goal('g1', { startMonth: '2026-12', monthsWaiting: 1 }),
+          goal('g2', { startMonth: '2027-03', monthsWaiting: 4, alerts: ['income_drops'] }),
+        ],
+        timeline,
+      },
+      {
+        id: 'optimistic',
+        name: 'Otimista',
+        goals: [
+          goal('g1', { startMonth: '2026-11', monthsWaiting: 0 }),
+          goal('g2', { startMonth: '2027-01', monthsWaiting: 2 }),
+        ],
+        timeline,
+      },
+    ],
+  };
+}
+
 /** API de dados falsa (stub + spy), escrita à mão. */
 export class FakeFinanceApi implements FinanceApi {
   readonly calls: string[] = [];
@@ -243,5 +404,82 @@ export class FakeFinanceApi implements FinanceApi {
   }
   async dismissRecurring(key: string) {
     this.calls.push(`dismiss:${key}`);
+  }
+
+  // ---------------------------------------------------------------- planejamento
+  sources: IncomeSourceDto[] = [...INCOME_SOURCES];
+  goalList: GoalDto[] = [...GOALS];
+  plan: GoalPlanDto = aPlan();
+  readonly sent: unknown[] = [];
+  readonly planQueries: (PlanQuery & { deadline?: string })[] = [];
+
+  async incomeSources() {
+    return this.sources;
+  }
+  async createIncomeSource(command: CreateIncomeSourceCommand) {
+    this.calls.push('create-source');
+    this.sent.push(command);
+    const created: IncomeSourceDto = {
+      id: `s${this.sources.length + 1}`,
+      name: command.name,
+      kind: command.kind,
+      expectedMonthly: brl(command.expectedMonthlyCents),
+      startsOn: command.startsOn,
+      ...(command.endsOn ? { endsOn: command.endsOn } : {}),
+      risk: command.risk,
+      status: command.status,
+      ...(command.matcher ? { matcher: command.matcher } : {}),
+    };
+    this.sources = [...this.sources, created];
+    return created;
+  }
+  async updateIncomeSource(id: string, command: UpdateIncomeSourceCommand) {
+    this.calls.push(`update-source:${id}`);
+    this.sent.push(command);
+    return this.sources.find((s) => s.id === id) as IncomeSourceDto;
+  }
+  async deleteIncomeSource(id: string) {
+    this.calls.push(`delete-source:${id}`);
+    this.sources = this.sources.filter((s) => s.id !== id);
+  }
+  async incomeOverview(month: string) {
+    this.calls.push(`income-overview:${month}`);
+    return anIncomeOverview(month);
+  }
+  async goals() {
+    return this.goalList;
+  }
+  async createGoal(command: GoalCommand) {
+    this.calls.push('create-goal');
+    this.sent.push(command);
+    return { ...(GOALS[0] as GoalDto), id: 'g-new', name: command.name };
+  }
+  async replaceGoal(id: string, command: GoalCommand) {
+    this.calls.push(`replace-goal:${id}`);
+    this.sent.push(command);
+    return { ...(GOALS[0] as GoalDto), id, name: command.name };
+  }
+  async deleteGoal(id: string) {
+    this.calls.push(`delete-goal:${id}`);
+    this.goalList = this.goalList.filter((g) => g.id !== id);
+  }
+  async reorderGoals(ids: string[]) {
+    this.calls.push(`reorder:${ids.join(',')}`);
+    this.goalList = ids.map((id) => this.goalList.find((g) => g.id === id) as GoalDto);
+  }
+  async goalPlan(query: PlanQuery) {
+    this.planQueries.push(query);
+    return this.plan;
+  }
+  async requiredIncome(query: PlanQuery & { deadline?: string }): Promise<RequiredIncomeDto> {
+    this.planQueries.push(query);
+    return {
+      months: this.plan.months,
+      ...(query.deadline ? { deadline: query.deadline } : {}),
+      steps: [
+        { goalId: 'g1', monthlyIncome: brl(180000), startMonth: '2026-12' },
+        { goalId: 'g2', monthlyIncome: brl(query.deadline ? 260000 : 195000), startMonth: '2027-02' },
+      ],
+    };
   }
 }

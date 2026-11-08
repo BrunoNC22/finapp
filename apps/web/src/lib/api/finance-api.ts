@@ -1,11 +1,19 @@
 import type {
   AccountDto,
   CategoryDto,
+  CreateIncomeSourceCommand,
+  GoalCommand,
+  GoalDto,
+  GoalPlanDto,
+  IncomeOverviewDto,
+  IncomeSourceDto,
   InstallmentPurchaseDto,
   MonthlyReportDto,
+  RequiredIncomeDto,
   SyncRunDto,
   TransactionDto,
   TransactionPageDto,
+  UpdateIncomeSourceCommand,
 } from '@finapp/contracts';
 
 /** Porta usada pelas telas de dados (o teste usa um dublê manual, FakeFinanceApi). */
@@ -21,6 +29,29 @@ export interface FinanceApi {
   syncNow(options?: { full?: boolean }): Promise<SyncRunDto>;
   syncRuns(limit: number): Promise<SyncRunDto[]>;
   dismissRecurring(key: string): Promise<void>;
+
+  // Planejamento: renda
+  incomeSources(): Promise<IncomeSourceDto[]>;
+  createIncomeSource(command: CreateIncomeSourceCommand): Promise<IncomeSourceDto>;
+  updateIncomeSource(id: string, command: UpdateIncomeSourceCommand): Promise<IncomeSourceDto>;
+  deleteIncomeSource(id: string): Promise<void>;
+  incomeOverview(month: string, months?: number): Promise<IncomeOverviewDto>;
+
+  // Planejamento: metas
+  goals(): Promise<GoalDto[]>;
+  createGoal(command: GoalCommand): Promise<GoalDto>;
+  replaceGoal(id: string, command: GoalCommand): Promise<GoalDto>;
+  deleteGoal(id: string): Promise<void>;
+  reorderGoals(ids: string[]): Promise<void>;
+  goalPlan(query: PlanQuery): Promise<GoalPlanDto>;
+  requiredIncome(query: PlanQuery & { deadline?: string }): Promise<RequiredIncomeDto>;
+}
+
+export interface PlanQuery {
+  readonly months?: number;
+  /** Sem informar, a API usa o saldo disponível hoje nas contas. */
+  readonly startingSavingsCents?: number;
+  readonly minSlackPercent?: number;
 }
 
 /** O que a API recebe em GET /transactions (antes de virar query string). */
