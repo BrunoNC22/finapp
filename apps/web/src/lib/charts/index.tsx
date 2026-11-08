@@ -31,17 +31,27 @@ export function useChartTheme(): { palette: Palette; version: string } {
   return { palette, version };
 }
 
+/**
+ * Sem <canvas> utilizável (navegador muito antigo, ambiente de teste), o gráfico não é desenhado em vez
+ * de derrubar a tela: o texto acessível fica no contêiner (role="img" + aria-label) de cada gráfico.
+ */
+let canvasSupport: boolean | undefined;
+function canDrawCharts(): boolean {
+  canvasSupport ??= typeof document !== 'undefined' && !!document.createElement('canvas').getContext('2d');
+  return canvasSupport;
+}
+
 export function BarChart(props: ComponentProps<typeof Bar>) {
   const { version } = useChartTheme();
-  return <Bar key={version} {...props} />;
+  return canDrawCharts() ? <Bar key={version} {...props} /> : null;
 }
 
 export function LineChart(props: ComponentProps<typeof Line>) {
   const { version } = useChartTheme();
-  return <Line key={version} {...props} />;
+  return canDrawCharts() ? <Line key={version} {...props} /> : null;
 }
 
 export function DoughnutChart(props: ComponentProps<typeof Doughnut>) {
   const { version } = useChartTheme();
-  return <Doughnut key={version} {...props} />;
+  return canDrawCharts() ? <Doughnut key={version} {...props} /> : null;
 }

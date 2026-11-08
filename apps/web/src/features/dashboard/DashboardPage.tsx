@@ -6,6 +6,7 @@ import type { CategoryDirectory } from '../../lib/categories';
 import {
   BarChart,
   categoryAxis,
+  categoryColor,
   categoryColors,
   DoughnutChart,
   dataset,
@@ -18,9 +19,10 @@ import { addMonths, currentMonth, formatMonthLong, isMonth, type Month } from '.
 import { Amount } from '../shared/Amount';
 import { MonthPicker } from '../shared/MonthPicker';
 import { QueryState } from '../shared/QueryState';
-import { financeKeys, useCategories } from '../shared/queries';
+import { financeKeys, useAccountNames, useCategories } from '../shared/queries';
 import { paymentBadge } from '../transactions/transaction-labels';
 import { spendingByGroup, spendingHighlights } from './highlights';
+import { incomeBars } from './income-sources';
 
 /** Painel do mês: quanto entrou, quanto saiu, para onde foi e o que já está comprometido. */
 export function DashboardPage() {
@@ -96,6 +98,7 @@ function Dashboard({
       <div className="chart-grid">
         <CashFlowChart report={report} />
         <CategoryChart report={report} categories={categories} month={month} />
+        <IncomeSourcesChart report={report} categories={categories} month={month} />
         <TopExpenses report={report} categories={categories} month={month} />
         <Recurring report={report} />
       </div>
@@ -188,6 +191,75 @@ function CategoryChart({
             ],
           }}
           options={{ cutout: '68%', plugins: { legend: { position: 'right' }, finappCenterText: { label: 'Total' } } }}
+        />
+      </div>
+    </article>
+  );
+}
+
+/** Rótulo longo de eixo cortado com reticências (o nome completo fica no texto acessível do gráfico). */
+const shorten = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
+
+function IncomeSourcesChart({
+  report,
+  categories,
+  month,
+}: {
+  report: MonthlyReportDto;
+  categories: CategoryDirectory;
+  month: Month;
+}) {
+  const { palette } = useChartTheme();
+  const accountName = useAccountNames();
+  const bars = incomeBars(report, categories, accountName);
+  if (bars.length === 0) return null;
+  const color = categoryColor('renda', palette);
+  const summary = bars.map((b) => `${b.label}: ${formatCents(b.cents)}`).join('; ');
+  return (
+    <article className="card chart-card">
+      <h2>De onde veio o dinheiro</h2>
+      <p className="hint">
+        Entradas de {formatMonthLong(month)} por fonte (sem transferências entre suas contas e devoluções)
+      </p>
+      <div
+        className="chart"
+        style={{ height: `${Math.max(160, bars.length * 44)}px` }}
+        role="img"
+        aria-label={`Gráfico de barras: entradas por fonte. ${summary}`}
+      >
+        <BarChart
+          data={{
+            // "Categoria · Conta" em duas linhas: cabe no cartão estreito sem cortar o nome.
+            labels: bars.map((b) => {
+              const lines = b.label.split(' · ').map((line) => shorten(line, 22));
+              if (b.count > 1) lines[lines.length - 1] = `${lines.at(-1)} (${b.count}×)`;
+              return lines;
+            }),
+            datasets: [
+              dataset.ranking(
+                'Recebido',
+                bars.map((b) => b.cents),
+                bars.map(() => color),
+              ),
+            ],
+          }}
+          options={{
+            indexAxis: 'y',
+            interaction: { mode: 'nearest', axis: 'y', intersect: false },
+            layout: { padding: { right: 72 } },
+            plugins: { legend: { display: false }, finappValueLabels: true },
+            scales: {
+              x: { display: false, beginAtZero: true },
+              // Todos os nomes visíveis (sem pular rótulos) e espaço mínimo para eles no cartão estreito.
+              y: {
+                ...categoryAxis,
+                ticks: { ...categoryAxis.ticks, autoSkip: false, font: { size: 11 } },
+                afterFit: (scale: { width: number }) => {
+                  scale.width = Math.max(scale.width, 150);
+                },
+              },
+            },
+          }}
         />
       </div>
     </article>

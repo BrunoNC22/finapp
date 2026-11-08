@@ -232,6 +232,18 @@ export const MonthlyReportSchema = z.object({
   byAccount: z.array(z.object({ accountId: z.string(), ...spentRow })),
   byPaymentMethod: z.array(z.object({ paymentMethod: PaymentMethodSchema, ...spentRow })),
   topExpenses: z.array(TransactionSchema),
+  /** De onde veio o dinheiro: entradas reais do mês por fonte (sem transferências próprias e devoluções). */
+  incomeSources: z.array(
+    z.object({
+      key: z.string(),
+      /** Pessoa/empresa que pagou; ausente para rendimentos e cashback (use conta + categoria). */
+      label: z.string().optional(),
+      accountId: z.string().optional(),
+      categoryId: z.string().optional(),
+      total: MoneySchema,
+      count: z.number().int(),
+    }),
+  ),
   outliers: z.array(z.object({ transaction: TransactionSchema, timesTheMedian: z.number() })),
   recurring: z.array(RecurringSchema),
   commitments: z.array(

@@ -39,6 +39,21 @@
   --chart-6: #be185d;
   --chart-7: #4d7c0f;
   --chart-8: #475569;
+  /* Cor FIXA de cada grupo de categoria (rosca, legendas): a mesma coisa sempre com a mesma cor. */
+  --cat-renda: #059669; /* esmeralda */
+  --cat-moradia: #2563eb; /* azul */
+  --cat-alimentacao: #ca8a04; /* amarelo */
+  --cat-transporte: #16a34a; /* verde */
+  --cat-saude: #0891b2; /* ciano */
+  --cat-educacao: #4f46e5; /* índigo */
+  --cat-assinaturas: #7c3aed; /* violeta */
+  --cat-compras: #ea580c; /* laranja */
+  --cat-lazer: #c026d3; /* fúcsia */
+  --cat-financeiro: #b91c1c; /* vermelho */
+  --cat-pessoas: #db2777; /* rosa */
+  --cat-doacoes: #78716c; /* pedra */
+  --cat-investimentos: #0d9488; /* verde-água */
+  --cat-outros: #64748b; /* cinza */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -68,6 +83,20 @@
     --chart-6: #f472b6;
     --chart-7: #a3e635;
     --chart-8: #94a3b8;
+    --cat-renda: #34d399;
+    --cat-moradia: #60a5fa;
+    --cat-alimentacao: #facc15;
+    --cat-transporte: #4ade80;
+    --cat-saude: #22d3ee;
+    --cat-educacao: #818cf8;
+    --cat-assinaturas: #a78bfa;
+    --cat-compras: #fb923c;
+    --cat-lazer: #e879f9;
+    --cat-financeiro: #ef4444;
+    --cat-pessoas: #f472b6;
+    --cat-doacoes: #a8a29e;
+    --cat-investimentos: #2dd4bf;
+    --cat-outros: #94a3b8;
   }
 }
 
@@ -97,4 +126,18 @@
   --chart-6: #f472b6;
   --chart-7: #a3e635;
   --chart-8: #94a3b8;
+  --cat-renda: #34d399;
+  --cat-moradia: #60a5fa;
+  --cat-alimentacao: #facc15;
+  --cat-transporte: #4ade80;
+  --cat-saude: #22d3ee;
+  --cat-educacao: #818cf8;
+  --cat-assinaturas: #a78bfa;
+  --cat-compras: #fb923c;
+  --cat-lazer: #e879f9;
+  --cat-financeiro: #ef4444;
+  --cat-pessoas: #f472b6;
+  --cat-doacoes: #a8a29e;
+  --cat-investimentos: #2dd4bf;
+  --cat-outros: #94a3b8;
 }

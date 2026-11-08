@@ -3,7 +3,7 @@ import { aTransaction } from '../../../../../test/builders/transaction.builder.j
 import { LocalDate } from '../../../../shared/kernel/local-date.js';
 import type { PaymentMethod, Transaction } from '../transaction.js';
 import { RecurringDetector } from './recurring-detector.js';
-import { breakdownBy, cashFlow, categoryBreakdown, outliers, topExpenses } from './spending-reports.js';
+import { breakdownBy, cashFlow, categoryBreakdown, incomeSources, outliers, topExpenses } from './spending-reports.js';
 
 let seq = 0;
 const tx = (
@@ -117,6 +117,56 @@ describe('topExpenses and outliers', () => {
     const flagged = outliers(txs, '2026-10');
     expect(flagged.map((o) => o.transaction.description)).toEqual(['RESTAURANTE CARO']);
     expect(flagged[0]?.timesTheMedian).toBeGreaterThan(5);
+  });
+});
+
+describe('incomeSources', () => {
+  const received = (
+    day: string,
+    cents: number,
+    opts: { name?: string; account?: string; method?: PaymentMethod } = {},
+  ) => {
+    const t = aTransaction()
+      .withId(`in-${++seq}`)
+      .on(day)
+      .withAmount(cents)
+      .withPaymentMethod(opts.method ?? 'pix')
+      .withAccount(opts.account ?? 'wallet')
+      .withDescription(opts.method === 'yield' ? 'Rendimento' : 'Pix recebido')
+      .withCounterparty(opts.name)
+      .build();
+    if (opts.method === 'yield') t.categorize('renda.rendimentos', 'rule');
+    return t;
+  };
+
+  it('adds up what came from each source in the month, biggest first', () => {
+    const txs = [
+      received('2026-10-02', 50000, { name: 'Fulano de Tal' }),
+      received('2026-10-12', 60000, { name: 'FULANO DE TAL' }),
+      received('2026-10-20', 40000, { name: 'Fulano de Tal' }),
+      received('2026-10-05', 90000, { name: 'Fundação Exemplo' }),
+      received('2026-10-31', 5000, { account: 'wallet', method: 'yield' }),
+      received('2026-10-31', 100, { account: 'other-wallet', method: 'yield' }),
+      received('2026-09-30', 99999, { name: 'Fulano de Tal' }),
+    ];
+
+    const sources = incomeSources(txs, '2026-10');
+
+    expect(sources.map((s) => [s.label ?? `${s.categoryId}@${s.accountId}`, s.total.cents, s.count])).toEqual([
+      ['Fulano de Tal', 150000, 3],
+      ['Fundação Exemplo', 90000, 1],
+      ['renda.rendimentos@wallet', 5000, 1],
+      ['renda.rendimentos@other-wallet', 100, 1],
+    ]);
+  });
+
+  it('never counts transfers between own accounts or refunds as income', () => {
+    const own = received('2026-10-02', 50000, { name: 'Eu Mesmo' });
+    own.markAsInternalTransfer();
+    const refund = received('2026-10-03', 1800, { name: 'Empresa X' });
+    refund.markAsRefund();
+
+    expect(incomeSources([own, refund], '2026-10')).toEqual([]);
   });
 });
 

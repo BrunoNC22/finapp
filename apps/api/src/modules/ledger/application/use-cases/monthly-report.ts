@@ -7,6 +7,8 @@ import {
   type CategorySpending,
   cashFlow,
   categoryBreakdown,
+  type IncomeSource,
+  incomeSources,
   type KeyedSpending,
   type MonthFlow,
   type Outlier,
@@ -32,6 +34,7 @@ export interface MonthlyReport {
   readonly byAccount: KeyedSpending[];
   readonly byPaymentMethod: KeyedSpending[];
   readonly topExpenses: Transaction[];
+  readonly incomeSources: IncomeSource[];
   readonly outliers: Outlier[];
   readonly recurring: Recurring[];
   readonly commitments: MonthlyCommitment[];
@@ -68,6 +71,7 @@ export class GetMonthlyReport {
       byAccount: breakdownBy(history, target, (t) => t.accountId),
       byPaymentMethod: breakdownBy(history, target, (t) => t.paymentMethod),
       topExpenses: topExpenses(history, target, 5),
+      incomeSources: incomeSources(history, target),
       outliers: outliers(history, target),
       recurring,
       commitments: this.commitments(history, recurring, firstDay.addMonths(1)),

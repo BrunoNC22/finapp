@@ -1,4 +1,5 @@
 import { Money } from '../../../../shared/kernel/money.js';
+import { counterpartyKey } from '../categorization/learned-categories.js';
 import type { Transaction } from '../transaction.js';
 
 /**
@@ -142,4 +143,51 @@ export function outliers(
     if (times >= factor) result.push({ transaction: t, timesTheMedian: Math.round(times * 10) / 10 });
   }
   return result.sort((a, b) => b.timesTheMedian - a.timesTheMedian);
+}
+
+export interface IncomeSource {
+  /** Identifica a fonte dentro do relatório (não é exibida). */
+  readonly key: string;
+  /** Nome da pessoa/empresa que pagou (a grafia mais frequente). */
+  readonly label?: string;
+  /** Sem contraparte (rendimento, cashback): a conta e a categoria identificam a fonte. */
+  readonly accountId?: string;
+  readonly categoryId?: string;
+  readonly total: Money;
+  readonly count: number;
+}
+
+/**
+ * De onde veio o dinheiro no mês: entradas REAIS (classificadas como renda; transferências entre
+ * contas próprias e devoluções nunca entram) somadas por fonte, da maior para a menor.
+ * Com contraparte: por pessoa/empresa (documento, senão nome). Sem: por conta + categoria
+ * (rendimentos de duas carteiras são fontes diferentes).
+ */
+export function incomeSources(transactions: readonly Transaction[], month: string): IncomeSource[] {
+  const groups = new Map<string, { txs: Transaction[]; names: Map<string, number> }>();
+  for (const t of transactions) {
+    if (!isIncome(t) || !inMonth(month)(t) || !t.amount.isPositive()) continue;
+    const hasCounterparty = !!(t.counterparty?.name || t.counterparty?.document);
+    const who = hasCounterparty ? counterpartyKey(t) : undefined;
+    const key = who ? `cp:${who}` : `acc:${t.accountId}:${t.category?.categoryId ?? t.paymentMethod}`;
+    const group = groups.get(key) ?? { txs: [], names: new Map<string, number>() };
+    group.txs.push(t);
+    const name = t.counterparty?.name?.trim();
+    if (name) group.names.set(name, (group.names.get(name) ?? 0) + 1);
+    groups.set(key, group);
+  }
+  return [...groups.entries()]
+    .map(([key, { txs, names }]) => {
+      const [label] = [...names].sort((a, b) => b[1] - a[1])[0] ?? [];
+      const first = txs[0] as Transaction;
+      return {
+        key,
+        ...(label ? { label } : {}),
+        ...(key.startsWith('acc:') ? { accountId: first.accountId } : {}),
+        ...(first.category ? { categoryId: first.category.categoryId } : {}),
+        total: Money.sum(txs.map((t) => t.amount)),
+        count: txs.length,
+      };
+    })
+    .sort((a, b) => b.total.cents - a.total.cents);
 }

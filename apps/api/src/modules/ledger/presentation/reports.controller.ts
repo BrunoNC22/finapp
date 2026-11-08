@@ -23,6 +23,16 @@ const toRecurringDto = (r: Recurring): RecurringDto => ({
   ...(r.categoryId ? { categoryId: r.categoryId } : {}),
 });
 
+/** A chave de contraparte pode conter o documento: sai da API só como hash. */
+function fnv(text: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(16).padStart(8, '0');
+}
+
 @Controller('reports')
 export class ReportsController {
   constructor(
@@ -56,6 +66,14 @@ export class ReportsController {
         count: p.count,
       })),
       topExpenses: r.topExpenses.map(toTransactionDto),
+      incomeSources: r.incomeSources.map((source) => ({
+        key: source.key.startsWith('cp:') ? `cp:${fnv(source.key)}` : source.key,
+        ...(source.label ? { label: source.label } : {}),
+        ...(source.accountId ? { accountId: source.accountId } : {}),
+        ...(source.categoryId ? { categoryId: source.categoryId } : {}),
+        total: money(source.total),
+        count: source.count,
+      })),
       outliers: r.outliers.map((o) => ({
         transaction: toTransactionDto(o.transaction),
         timesTheMedian: o.timesTheMedian,

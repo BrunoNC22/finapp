@@ -1,6 +1,14 @@
 import { Chart } from 'chart.js';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { applyChartTheme, categoryColor, moneyAxis, moneyLabel, monthLabels, readPalette } from './chart-config';
+import {
+  applyChartTheme,
+  categoryColor,
+  categoryColors,
+  moneyAxis,
+  moneyLabel,
+  monthLabels,
+  readPalette,
+} from './chart-config';
 
 const plain = (s: string) => s.replace(/ /g, ' ');
 
@@ -12,6 +20,8 @@ describe('chart-config', () => {
     root.style.setProperty('--chart-grid', '#eeeeee');
     root.style.setProperty('--income', '#00aa00');
     for (let i = 1; i <= 8; i++) root.style.setProperty(`--chart-${i}`, `#00000${i}`);
+    root.style.setProperty('--cat-alimentacao', '#ffff00');
+    root.style.setProperty('--cat-transporte', '#00ff00');
   });
 
   it('reads colors from the CSS design tokens (single source of truth)', () => {
@@ -43,6 +53,19 @@ describe('chart-config', () => {
     expect(withAlpha('#0f766e', 0.5)).toBe('rgba(15, 118, 110, 0.5)');
     expect(withAlpha('#abc', 1)).toBe('rgba(170, 187, 204, 1)');
     expect(withAlpha('rgb(1, 2, 3)', 0.2)).toBe('rgba(1, 2, 3, 0.2)');
+  });
+
+  it('each group has its OWN fixed color, whatever else is in the chart', () => {
+    const palette = readPalette();
+    expect(categoryColor('alimentacao.delivery', palette)).toBe('#ffff00');
+    expect(categoryColor('transporte.app-devolucao', palette)).toBe('#00ff00');
+    expect(categoryColors(['transporte', 'alimentacao'], palette)).toEqual(['#00ff00', '#ffff00']);
+    expect(categoryColors(['alimentacao.mercado', 'alimentacao'], palette)).toEqual(['#ffff00', '#ffff00']);
+  });
+
+  it('a group created by the user gets a stable color from the general palette', () => {
+    const palette = readPalette();
+    expect(palette.categorical).toContain(categoryColor('grupo-novo.item', palette));
   });
 
   it('a category always gets the same color; subcategories share the group color; none is gray', () => {

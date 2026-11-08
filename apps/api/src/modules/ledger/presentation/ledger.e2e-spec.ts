@@ -194,6 +194,10 @@ describe('ledger HTTP API (demo provider, real MongoDB)', () => {
     expect(report.recurring.map((r) => r.label)).toEqual(expect.arrayContaining(['operadora exemplo']));
     expect(report.commitments).toHaveLength(12);
     expect(report.commitments[0]?.month).toBe('2026-11');
+    // De onde veio o dinheiro: as fontes somam exatamente a renda do mês, da maior para a menor.
+    const sources = report.incomeSources;
+    expect(sources.reduce((sum, s) => sum + s.total.cents, 0)).toBe(october?.income.cents);
+    expect(sources.map((s) => s.total.cents)).toEqual([...sources.map((s) => s.total.cents)].sort((a, b) => b - a));
   });
 
   it('dismissing a recurrence removes it from the report; invalid month is 400', async () => {

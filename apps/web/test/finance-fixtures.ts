@@ -121,6 +121,17 @@ export function aReport(month = '2026-10'): MonthlyReportDto {
       delivery,
     ],
     outliers: [],
+    incomeSources: [
+      { key: 'cp:a', label: 'Cliente Exemplo', total: brl(150000), count: 3 },
+      { key: 'cp:b', label: 'Fundação Exemplo', total: brl(90000), count: 1 },
+      {
+        key: 'acc:carteira:renda.rendimentos',
+        accountId: 'conta-corrente',
+        categoryId: 'renda',
+        total: brl(10000),
+        count: 30,
+      },
+    ],
     recurring: [
       {
         key: 'r-streaming',

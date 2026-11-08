@@ -50,7 +50,27 @@ export interface Palette {
   readonly goal: string;
   /** Cores para categorias (até 8; depois repetem). */
   readonly categorical: readonly string[];
+  /** Cor fixa de cada grupo de categoria da taxonomia padrão (tokens --cat-<grupo>). */
+  readonly groups: Readonly<Record<string, string>>;
 }
+
+/** Grupos da taxonomia padrão com cor fixa em tokens.css (--cat-<grupo>). */
+const CATEGORY_GROUPS = [
+  'renda',
+  'moradia',
+  'alimentacao',
+  'transporte',
+  'saude',
+  'educacao',
+  'assinaturas',
+  'compras',
+  'lazer',
+  'financeiro',
+  'pessoas',
+  'doacoes',
+  'investimentos',
+  'outros',
+] as const;
 
 export type SemanticColor = 'income' | 'expense' | 'transfer' | 'committed' | 'goal';
 
@@ -70,6 +90,9 @@ export function readPalette(root: HTMLElement = document.documentElement): Palet
     committed: token('committed'),
     goal: token('goal'),
     categorical: [1, 2, 3, 4, 5, 6, 7, 8].map((i) => token(`chart-${i}`)),
+    groups: Object.fromEntries(
+      CATEGORY_GROUPS.map((group) => [group, token(`cat-${group}`)]).filter(([, color]) => !!color),
+    ),
   };
 }
 
@@ -93,19 +116,24 @@ export function withAlpha(color: string, alpha: number): string {
 export function categoryColor(categoryId: string | null, palette: Palette): string {
   if (!categoryId) return palette.transfer;
   const group = categoryId.split('.')[0] ?? categoryId;
+  const fixed = palette.groups[group];
+  if (fixed) return fixed;
   let hash = 0;
   for (const char of group) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
   return palette.categorical[hash % palette.categorical.length] ?? palette.transfer;
 }
 
 /**
- * Cores para várias categorias no MESMO gráfico: parte da cor estável de cada uma e, se já estiver
- * em uso, pega a próxima livre, para que duas fatias vizinhas nunca tenham a mesma cor.
+ * Cores para várias categorias no MESMO gráfico. Grupos da taxonomia padrão têm cor FIXA (Alimentação
+ * é sempre amarela, em qualquer gráfico e mês). Grupos criados pelo usuário partem de uma cor estável
+ * da paleta geral e, se ela já estiver em uso no gráfico, pegam a próxima livre.
  */
 export function categoryColors(categoryIds: readonly (string | null)[], palette: Palette): string[] {
-  const used = new Set<string>();
+  const used = new Set<string>(Object.values(palette.groups));
   return categoryIds.map((id) => {
     if (!id) return palette.transfer;
+    const fixed = palette.groups[id.split('.')[0] ?? id];
+    if (fixed) return fixed;
     const preferred = categoryColor(id, palette);
     const start = Math.max(0, palette.categorical.indexOf(preferred));
     for (let i = 0; i < palette.categorical.length; i++) {

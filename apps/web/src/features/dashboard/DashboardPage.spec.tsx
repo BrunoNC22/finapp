@@ -28,6 +28,14 @@ describe('DashboardPage', () => {
     expect(link).toHaveAttribute('href', '/transacoes?periodo=2026-10&categoria=alimentacao.delivery');
   });
 
+  it('shows where the money came from, by source', async () => {
+    renderWithServices(<DashboardPage />, { route: '/?mes=2026-10' });
+    const chart = await screen.findByRole('img', { name: /entradas por fonte/ });
+    expect(plain(chart.getAttribute('aria-label'))).toMatch(
+      /Cliente Exemplo: R\$ 1\.500,00; Fundação Exemplo: R\$ 900,00/,
+    );
+  });
+
   it('lists the top expenses and lets the user say something is not recurring', async () => {
     const { finance } = renderWithServices(<DashboardPage />, { route: '/?mes=2026-10' });
     expect(await screen.findByText('Aluguel Exemplo')).toBeInTheDocument();
