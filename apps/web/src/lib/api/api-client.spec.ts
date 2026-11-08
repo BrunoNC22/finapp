@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SessionStore } from '../session/session-store';
-import { ApiClient, ApiError } from './api-client';
+import { ApiClient, ApiError, OutdatedAppError } from './api-client';
 
 /** fetch falso (spy + stub): registra as chamadas e responde o que o teste definir. */
 function fakeFetch(respond: (url: string, init?: RequestInit) => Response) {
@@ -45,5 +45,11 @@ describe('ApiClient', () => {
   it('rejects responses that do not match the contract', async () => {
     const { fetchFn } = fakeFetch(() => json({ ownerExists: 'sim' }));
     await expect(new ApiClient(new SessionStore(), '/api', fetchFn).status()).rejects.toThrow();
+  });
+
+  it('a response the app does not understand means the app is outdated (not a generic failure)', async () => {
+    const { fetchFn } = fakeFetch(() => json({ ownerExists: 'talvez' }));
+
+    await expect(new ApiClient(new SessionStore(), '/api', fetchFn).status()).rejects.toBeInstanceOf(OutdatedAppError);
   });
 });

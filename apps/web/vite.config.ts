@@ -12,6 +12,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // O registro é feito em main.tsx (com verificação periódica de versão nova).
+      injectRegister: false,
       manifest: {
         name: 'finapp',
         short_name: 'finapp',

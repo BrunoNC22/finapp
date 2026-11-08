@@ -29,6 +29,17 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * A resposta da API não bate com o contrato que este app conhece: a API já está numa versão mais
+ * nova que o app aberto (PWA com código antigo). Recarregar resolve.
+ */
+export class OutdatedAppError extends Error {
+  constructor() {
+    super('o app está desatualizado em relação à API');
+    this.name = 'OutdatedAppError';
+  }
+}
+
 /** Porta usada pelas telas de entrada e configurações (o teste usa um dublê manual). */
 export interface AuthApi {
   status(): Promise<AuthStatusDto>;
@@ -150,6 +161,9 @@ export class ApiClient implements AuthApi, FinanceApi {
     if (token) this.session.touch();
     if (response.status === 204) return undefined as T;
     const json: unknown = await response.json();
-    return schema ? schema.parse(json) : (json as T);
+    if (!schema) return json as T;
+    const parsed = schema.safeParse(json);
+    if (!parsed.success) throw new OutdatedAppError();
+    return parsed.data;
   }
 }

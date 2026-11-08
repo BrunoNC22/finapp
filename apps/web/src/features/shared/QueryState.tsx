@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { OutdatedAppError } from '../../lib/api/api-client';
 
 interface Props {
   readonly isPending: boolean;
@@ -22,6 +23,16 @@ export function QueryState({ isPending, error, onRetry, isEmpty, empty, skeleton
           // biome-ignore lint/suspicious/noArrayIndexKey: blocos estáticos de carregamento
           <div key={i} className="skeleton" />
         ))}
+      </div>
+    );
+  }
+  if (error instanceof OutdatedAppError) {
+    return (
+      <div className="card state-error" role="alert">
+        <p>Há uma versão nova do finapp. Recarregue para continuar.</p>
+        <button type="button" className="primary" onClick={() => window.location.reload()}>
+          Recarregar
+        </button>
       </div>
     );
   }
