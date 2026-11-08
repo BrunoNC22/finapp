@@ -376,3 +376,107 @@ export const IncomeOverviewSchema = z.object({
   }),
 });
 export type IncomeOverviewDto = z.infer<typeof IncomeOverviewSchema>;
+
+// ------------------------------------------------------------------ planejamento: metas
+export const GoalKindSchema = z.enum(['purchase', 'lifestyle', 'reserve', 'debt']);
+const installmentsSchema = z.number().int().min(1).max(480);
+export const FinancingSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('cash') }),
+  /** Tabela Price; taxa mensal decimal (0,0199 = 1,99% a.m.). */
+  z.object({ kind: z.literal('loan'), installments: installmentsSchema, monthlyRate: z.number().min(0).max(0.2) }),
+  z.object({ kind: z.literal('interest_free'), installments: installmentsSchema }),
+  z.object({
+    kind: z.literal('consortium'),
+    installments: installmentsSchema,
+    adminFeeRate: z.number().min(0).max(0.99),
+  }),
+]);
+export type FinancingDto = z.infer<typeof FinancingSchema>;
+
+export const GoalSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  kind: GoalKindSchema,
+  price: MoneySchema,
+  downPayment: MoneySchema,
+  oneTimeCosts: MoneySchema,
+  financing: FinancingSchema,
+  recurringCosts: z.array(
+    z.object({ name: z.string(), monthly: MoneySchema, replacesCategoryId: z.string().optional() }),
+  ),
+  /** Calculados: quanto guardar para começar, parcela e custo total. */
+  upfront: MoneySchema,
+  installment: MoneySchema,
+  totalCost: MoneySchema,
+});
+export type GoalDto = z.infer<typeof GoalSchema>;
+
+export const GoalCommandSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+  kind: GoalKindSchema,
+  priceCents: z.number().int().min(0),
+  downPaymentCents: z.number().int().min(0).default(0),
+  oneTimeCostsCents: z.number().int().min(0).default(0),
+  financing: FinancingSchema,
+  recurringCosts: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(60),
+        monthlyCents: z.number().int().min(0),
+        replacesCategoryId: z.string().min(1).optional(),
+      }),
+    )
+    .max(20)
+    .default([]),
+});
+export type GoalCommand = z.input<typeof GoalCommandSchema>;
+
+export const ReorderGoalsCommandSchema = z.object({ ids: z.array(z.string().min(1)).min(1).max(50) });
+
+export const GoalPlanQuerySchema = z.object({
+  months: z.coerce.number().int().min(6).max(120).default(48),
+  /** Sem informar, usa o saldo disponível hoje nas contas (sem cartões). */
+  startingSavingsCents: z.coerce.number().int().min(0).optional(),
+  minSlackPercent: z.coerce.number().int().min(0).max(50).default(10),
+});
+
+const LeverSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('extra_income'), amount: MoneySchema }),
+  z.object({ kind: z.literal('cut'), categoryId: z.string(), amount: MoneySchema }),
+]);
+
+export const GoalPlanSchema = z.object({
+  months: z.array(YearMonthSchema),
+  startingSavings: MoneySchema,
+  minSlackPercent: z.number().int(),
+  baseline: z.object({ monthlySpending: MoneySchema, months: z.number().int() }),
+  scenarios: z.array(
+    z.object({
+      id: z.enum(['floor', 'likely', 'optimistic']),
+      name: z.string(),
+      goals: z.array(
+        z.object({
+          goalId: z.string(),
+          status: z.enum(['scheduled', 'not_feasible', 'blocked']),
+          startMonth: YearMonthSchema.optional(),
+          monthsWaiting: z.number().int().optional(),
+          monthlyCost: MoneySchema,
+          monthlyCostAfterPayments: MoneySchema,
+          alerts: z.array(z.enum(['income_drops', 'beyond_projection'])),
+          monthlyGap: MoneySchema.optional(),
+          levers: z.array(LeverSchema),
+        }),
+      ),
+      timeline: z.array(
+        z.object({
+          month: YearMonthSchema,
+          income: MoneySchema,
+          spending: MoneySchema,
+          surplus: MoneySchema,
+          savings: MoneySchema,
+        }),
+      ),
+    }),
+  ),
+});
+export type GoalPlanDto = z.infer<typeof GoalPlanSchema>;

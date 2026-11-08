@@ -18,6 +18,7 @@ import {
   CreateCategorizationRule,
   SeedDefaultCategorization,
 } from './application/use-cases/categorization.js';
+import { GetAvailableBalance, GetCostOfLiving } from './application/use-cases/cost-of-living.js';
 import {
   ClassifyTransactionManually,
   CreateCategory,
@@ -109,6 +110,16 @@ function openFinanceProvider(config: AppConfig, clock: Clock): OpenFinanceProvid
         provider: OpenFinanceProvider,
       ) => new CategorizeTransactionManually(t, c, r, new Categorizer(provider.categoryMap)),
       inject: [TransactionRepository, CategoryRepository, CategorizationRuleRepository, OpenFinanceProvider],
+    },
+    {
+      provide: GetCostOfLiving,
+      useFactory: (t: TransactionRepository) => new GetCostOfLiving(t),
+      inject: [TransactionRepository],
+    },
+    {
+      provide: GetAvailableBalance,
+      useFactory: (a: AccountRepository) => new GetAvailableBalance(a),
+      inject: [AccountRepository],
     },
     {
       provide: ListIncomeEntries,
@@ -204,6 +215,8 @@ function openFinanceProvider(config: AppConfig, clock: Clock): OpenFinanceProvid
     CategoryRepository,
     CategorizationRuleRepository,
     ListIncomeEntries,
+    GetCostOfLiving,
+    GetAvailableBalance,
   ],
 })
 export class LedgerModule implements OnApplicationBootstrap, OnApplicationShutdown {
