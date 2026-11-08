@@ -138,6 +138,7 @@ export function SettingsPage() {
       <button type="button" className="danger" onClick={() => void auth.logout()}>
         Sair
       </button>
+      <p className="hint app-version">Versão do app: {typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev'}</p>
     </section>
   );
 }

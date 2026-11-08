@@ -6,7 +6,15 @@ import { defineConfig } from 'vitest/config';
 // Em desenvolvimento, /api vai para a API (FINAPP_API_TARGET, padrão http://127.0.0.1:3000).
 const apiTarget = process.env.FINAPP_API_TARGET ?? 'http://127.0.0.1:3000';
 
+// Versão exibida em Configurações: data e hora do build (ajuda a saber qual versão o celular está rodando).
+const buildVersion = new Intl.DateTimeFormat('pt-BR', {
+  dateStyle: 'short',
+  timeStyle: 'short',
+  timeZone: 'America/Sao_Paulo',
+}).format(new Date());
+
 export default defineConfig({
+  define: { __APP_VERSION__: JSON.stringify(buildVersion) },
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   plugins: [
     react(),
