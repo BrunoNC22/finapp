@@ -8,6 +8,7 @@ import { SystemClock } from '../../shared/infrastructure/system-clock.js';
 import { UuidIdGenerator } from '../../shared/infrastructure/uuid-id-generator.js';
 import {
   ChallengeStore,
+  McpTokenStore,
   OwnerRepository,
   PasskeyService,
   PasswordHasher,
@@ -16,10 +17,12 @@ import {
   SetupTokenStore,
 } from './application/ports/identity-ports.js';
 import { AuthService } from './application/use-cases/auth.js';
+import { McpAccess } from './application/use-cases/mcp-access.js';
 import {
   CryptoSecretTokens,
   ensureIdentityIndexes,
   MemoryChallengeStore,
+  MongoMcpTokenStore,
   MongoOwnerRepository,
   MongoSessionRepository,
   MongoSetupTokenStore,
@@ -85,9 +88,15 @@ import { AuthGuard } from './presentation/auth.guard.js';
         AppConfig,
       ],
     },
+    { provide: McpTokenStore, useFactory: (db: Db) => new MongoMcpTokenStore(db), inject: [Db] },
+    {
+      provide: McpAccess,
+      useFactory: (store: McpTokenStore, tokens: SecretTokens, clock: Clock) => new McpAccess(store, tokens, clock),
+      inject: [McpTokenStore, SecretTokens, Clock],
+    },
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
-  exports: [AuthService],
+  exports: [AuthService, McpAccess],
 })
 export class IdentityModule implements OnApplicationBootstrap {
   private readonly logger = new Logger(IdentityModule.name);

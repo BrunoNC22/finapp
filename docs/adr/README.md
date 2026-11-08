@@ -16,6 +16,7 @@ Cada ADR registra **uma** decisão técnica: o contexto, o que foi decidido e as
 | [0010](0010-plataforma-da-api.md)                      | NestJS 12 (ESM) sobre Fastify, TypeScript 7 e Biome           | Aceito |
 | [0011](0011-convencoes-do-livro-caixa.md)              | Convenções do livro-caixa: sinal, classificação e precedência | Aceito |
 | [0012](0012-autenticacao-estilo-app-de-banco.md)       | Autenticação no estilo app de banco                           | Aceito |
+| [0013](0013-assistente-via-mcp.md)                     | Assistente via MCP (somente leitura, HTTP na própria API)     | Aceito |
 
 ## Modelo
 

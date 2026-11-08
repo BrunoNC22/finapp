@@ -10,6 +10,8 @@ import {
 import type { Collection, Db } from 'mongodb';
 import {
   ChallengeStore,
+  type McpTokenInfo,
+  McpTokenStore,
   OwnerRepository,
   PasskeyService,
   PasswordHasher,
@@ -168,7 +170,12 @@ export class SimpleWebAuthnPasskeyService extends PasskeyService {
 }
 
 // ---------------------------------------------------------------------------- MongoDB
-export const IDENTITY_COLLECTIONS = { owner: 'owner', sessions: 'sessions', setupTokens: 'setup_tokens' } as const;
+export const IDENTITY_COLLECTIONS = {
+  owner: 'owner',
+  sessions: 'sessions',
+  setupTokens: 'setup_tokens',
+  mcpTokens: 'mcp_tokens',
+} as const;
 
 export async function ensureIdentityIndexes(db: Db): Promise<void> {
   await Promise.all([
@@ -283,5 +290,36 @@ export class MongoSetupTokenStore extends SetupTokenStore {
   async consume(tokenHash: string, now: Date): Promise<boolean> {
     const doc = await this.collection.findOneAndDelete({ _id: tokenHash });
     return doc !== null && now < doc.expiresAt;
+  }
+}
+
+interface McpTokenDocument {
+  _id: string;
+  label: string;
+  createdAt: Date;
+  lastUsedAt?: Date;
+}
+
+export class MongoMcpTokenStore extends McpTokenStore {
+  private readonly collection: Collection<McpTokenDocument>;
+  constructor(db: Db) {
+    super();
+    this.collection = db.collection<McpTokenDocument>(IDENTITY_COLLECTIONS.mcpTokens);
+  }
+  async add(tokenHash: string, label: string, createdAt: Date): Promise<void> {
+    await this.collection.insertOne({ _id: tokenHash, label, createdAt });
+  }
+  async use(tokenHash: string, at: Date): Promise<boolean> {
+    return (await this.collection.updateOne({ _id: tokenHash }, { $set: { lastUsedAt: at } })).matchedCount === 1;
+  }
+  async list(): Promise<McpTokenInfo[]> {
+    return (await this.collection.find().sort({ createdAt: 1 }).toArray()).map((d) => ({
+      label: d.label,
+      createdAt: d.createdAt,
+      ...(d.lastUsedAt ? { lastUsedAt: d.lastUsedAt } : {}),
+    }));
+  }
+  async revokeAll(): Promise<number> {
+    return (await this.collection.deleteMany({})).deletedCount;
   }
 }

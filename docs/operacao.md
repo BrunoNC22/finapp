@@ -36,6 +36,21 @@ docker compose exec api node dist/cli.js setup-token
 
 Redefinir a senha encerra todas as sessões abertas. Depois de entrar com a senha, cadastre a digital (passkey) nas configurações.
 
+## Conectar o Claude Code (assistente via MCP)
+
+O finapp expõe ferramentas **somente leitura** por MCP em `/api/mcp` (ADR 0013). Gere um token de leitura e registre
+o servidor no Claude Code, sem que o token apareça na tela:
+
+```sh
+TOKEN=$(docker compose exec -T api node dist/cli.js mcp-token "Claude Code")
+claude mcp add --transport http --scope user finapp http://127.0.0.1:8080/api/mcp \
+  --header "Authorization: Bearer $TOKEN"
+unset TOKEN
+```
+
+Depois, no Claude Code: "o que mais pesou nos meus gastos nos últimos 3 meses?". Outros comandos:
+`node dist/cli.js mcp-tokens` (lista e último uso) e `node dist/cli.js mcp-revoke` (revoga todos).
+
 ## Depois de reiniciar a máquina
 
 ```sh

@@ -217,6 +217,9 @@ function openFinanceProvider(config: AppConfig, clock: Clock): OpenFinanceProvid
     ListIncomeEntries,
     GetCostOfLiving,
     GetAvailableBalance,
+    GetMonthlyReport,
+    GetInstallmentPurchases,
+    TransactionQueries,
   ],
 })
 export class LedgerModule implements OnApplicationBootstrap, OnApplicationShutdown {

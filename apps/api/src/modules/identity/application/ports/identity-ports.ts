@@ -50,3 +50,18 @@ export abstract class PasskeyService {
     expectedChallenge: string,
   ): Promise<{ credentialId: string; newCounter: number }>;
 }
+
+export interface McpTokenInfo {
+  readonly label: string;
+  readonly createdAt: Date;
+  readonly lastUsedAt?: Date;
+}
+
+/** Tokens de LEITURA para o assistente (MCP). Guarda só o hash; não servem como sessão de login. */
+export abstract class McpTokenStore {
+  abstract add(tokenHash: string, label: string, createdAt: Date): Promise<void>;
+  /** Existe? Se sim, registra o uso. */
+  abstract use(tokenHash: string, at: Date): Promise<boolean>;
+  abstract list(): Promise<McpTokenInfo[]>;
+  abstract revokeAll(): Promise<number>;
+}
