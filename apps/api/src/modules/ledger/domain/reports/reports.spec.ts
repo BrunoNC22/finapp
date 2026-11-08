@@ -147,6 +147,8 @@ describe('incomeSources', () => {
       received('2026-10-05', 90000, { name: 'Fundação Exemplo' }),
       received('2026-10-31', 5000, { account: 'wallet', method: 'yield' }),
       received('2026-10-31', 100, { account: 'other-wallet', method: 'yield' }),
+      // Rendimento que o banco manda com a própria empresa como contraparte: continua "rendimentos da conta".
+      received('2026-10-15', 2000, { account: 'wallet', method: 'yield', name: 'Instituição Exemplo' }),
       received('2026-09-30', 99999, { name: 'Fulano de Tal' }),
     ];
 
@@ -155,7 +157,7 @@ describe('incomeSources', () => {
     expect(sources.map((s) => [s.label ?? `${s.categoryId}@${s.accountId}`, s.total.cents, s.count])).toEqual([
       ['Fulano de Tal', 150000, 3],
       ['Fundação Exemplo', 90000, 1],
-      ['renda.rendimentos@wallet', 5000, 1],
+      ['renda.rendimentos@wallet', 7000, 2],
       ['renda.rendimentos@other-wallet', 100, 1],
     ]);
   });

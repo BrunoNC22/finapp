@@ -167,12 +167,14 @@ export function incomeSources(transactions: readonly Transaction[], month: strin
   const groups = new Map<string, { txs: Transaction[]; names: Map<string, number> }>();
   for (const t of transactions) {
     if (!isIncome(t) || !inMonth(month)(t) || !t.amount.isPositive()) continue;
+    // Rendimento e cashback vêm da própria instituição: a fonte é "Rendimentos · conta", não o nome dela.
+    const fromAccountItself = t.paymentMethod === 'yield' || t.paymentMethod === 'cashback';
     const hasCounterparty = !!(t.counterparty?.name || t.counterparty?.document);
-    const who = hasCounterparty ? counterpartyKey(t) : undefined;
+    const who = hasCounterparty && !fromAccountItself ? counterpartyKey(t) : undefined;
     const key = who ? `cp:${who}` : `acc:${t.accountId}:${t.category?.categoryId ?? t.paymentMethod}`;
     const group = groups.get(key) ?? { txs: [], names: new Map<string, number>() };
     group.txs.push(t);
-    const name = t.counterparty?.name?.trim();
+    const name = fromAccountItself ? undefined : t.counterparty?.name?.trim();
     if (name) group.names.set(name, (group.names.get(name) ?? 0) + 1);
     groups.set(key, group);
   }
