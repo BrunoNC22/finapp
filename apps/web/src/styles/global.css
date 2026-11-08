@@ -295,6 +295,16 @@ select {
 .app-loading {
   min-height: 100dvh;
   background: var(--bg);
+  color: var(--text-muted);
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  text-align: center;
+}
+.app-loading p {
+  margin: 0;
 }
 
 /* ===================================================================== telas de dados (#19) */

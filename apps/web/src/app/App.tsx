@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { LoginPage } from '../features/auth/LoginPage';
+import { LoadingScreen } from './LoadingScreen';
 import { useServices, useSession } from './services';
 
 // Divisão de código: a tela de entrada precisa abrir rápido, mesmo num celular lento.
@@ -29,7 +30,7 @@ export function App() {
   if (state.status === 'signed-out') return <LoginPage expired={state.reason === 'expired'} />;
 
   return (
-    <Suspense fallback={<div className="app-loading" aria-busy="true" />}>
+    <Suspense fallback={<LoadingScreen />}>
       <AuthenticatedApp />
     </Suspense>
   );
