@@ -57,6 +57,9 @@ export function explain(t: TransactionDto): string[] {
     case 'manual':
       reasons.push('Categoria escolhida por você.');
       break;
+    case 'learned':
+      reasons.push('Categoria aprendida com uma correção sua para a mesma contraparte.');
+      break;
     case 'rule':
       reasons.push('Categoria definida por uma regra sua.');
       break;

@@ -19,6 +19,7 @@ export async function ensureLedgerIndexes(db: Db): Promise<void> {
     db.collection(COLLECTIONS.transactions).createIndex({ occurredOn: 1 }),
     db.collection(COLLECTIONS.transactions).createIndex({ classification: 1, occurredOn: 1 }),
     db.collection(COLLECTIONS.transactions).createIndex({ 'category.categoryId': 1, occurredOn: 1 }),
+    db.collection(COLLECTIONS.transactions).createIndex({ 'category.source': 1 }),
     db.collection(COLLECTIONS.syncRuns).createIndex({ startedAt: -1 }),
     // A trava expira sozinha: processo que morreu não bloqueia a sincronização para sempre.
     db.collection(COLLECTIONS.locks).createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),

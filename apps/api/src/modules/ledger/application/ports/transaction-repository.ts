@@ -19,4 +19,6 @@ export abstract class TransactionRepository {
   abstract findByExternalId(accountId: string, externalId: string): Promise<Transaction | undefined>;
   /** Ordenadas por data (mais antigas primeiro). */
   abstract findInPeriod(query: TransactionPeriodQuery): Promise<Transaction[]>;
+  /** Transações com categoria escolhida pelo usuário: os exemplos de que o categorizador aprende. */
+  abstract findManuallyCategorized(): Promise<Transaction[]>;
 }

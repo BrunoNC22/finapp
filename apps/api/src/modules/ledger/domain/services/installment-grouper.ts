@@ -17,6 +17,12 @@ export function normalizeMerchant(description: string): string {
     .trim();
 }
 
+/** Remove códigos de 1–2 letras que gateways põem antes do nome ("EC LOJA", "DL LOJA"). */
+export function withoutGatewayPrefix(merchant: string): string {
+  const words = merchant.split(' ');
+  return words.length >= 3 && (words[0]?.length ?? 0) <= 2 ? words.slice(1).join(' ') : merchant;
+}
+
 export interface ProjectedInstallment {
   readonly number: number;
   /** AAAA-MM em que a parcela deve cair. */

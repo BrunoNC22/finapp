@@ -5,6 +5,7 @@ import { CategorizationRule, type CategorizationRuleProps } from '../../domain/c
 import type { Categorizer } from '../../domain/categorization/categorizer.js';
 import { Category } from '../../domain/categorization/category.js';
 import { DEFAULT_CATEGORIES, DEFAULT_RULES } from '../../domain/categorization/default-taxonomy.js';
+import { counterpartyIdentity, LearnedCategories } from '../../domain/categorization/learned-categories.js';
 import type { CategorizationRuleRepository } from '../ports/categorization-rule-repository.js';
 import type { CategoryRepository } from '../ports/category-repository.js';
 import type { TransactionRepository } from '../ports/transaction-repository.js';
@@ -78,7 +79,8 @@ export class CreateCategorizationRule {
 
     const transactions = await this.transactions.findInPeriod(input.applyTo);
     const before = new Map(transactions.map((t) => [t.id, t.category?.categoryId]));
-    this.categorizer.categorize(transactions, await this.rules.findAll());
+    const learned = LearnedCategories.from(await this.transactions.findManuallyCategorized());
+    this.categorizer.categorize(transactions, await this.rules.findAll(), learned);
     const changed = transactions.filter((t) => t.category?.categoryId !== before.get(t.id));
     await this.transactions.saveMany(changed);
     return { ruleId: rule.id, affected: changed.length };
@@ -86,17 +88,42 @@ export class CreateCategorizationRule {
 }
 
 /** Decisão do usuário sobre a categoria de uma transação: prevalece sobre qualquer automação. */
+/**
+ * A correção também ENSINA: as outras transações da mesma contraparte (mesmo sentido), em todos os
+ * meses, passam a seguir a escolha, sem o usuário repetir mês a mês. Escolhas manuais nunca mudam.
+ */
 export class CategorizeTransactionManually {
+  /** Até onde, para trás e para frente, a correção se propaga. */
+  private static readonly REACH_MONTHS = 36;
+
   constructor(
     private readonly transactions: TransactionRepository,
     private readonly categories: CategoryRepository,
+    private readonly rules: CategorizationRuleRepository,
+    private readonly categorizer: Categorizer,
   ) {}
 
-  async execute(input: { transactionId: string; categoryId: string }): Promise<void> {
+  async execute(input: { transactionId: string; categoryId: string }): Promise<{ alsoApplied: number }> {
     await requireActiveCategory(this.categories, input.categoryId);
     const transaction = await this.transactions.findById(input.transactionId);
     if (!transaction) throw new UnknownTransactionError(input.transactionId);
     transaction.categorize(input.categoryId, 'manual');
     await this.transactions.save(transaction);
+
+    const identity = counterpartyIdentity(transaction);
+    if (!identity) return { alsoApplied: 0 };
+    const reach = CategorizeTransactionManually.REACH_MONTHS;
+    const sameCounterparty = (
+      await this.transactions.findInPeriod({
+        from: transaction.occurredOn.addMonths(-reach),
+        to: transaction.occurredOn.addMonths(reach),
+      })
+    ).filter((t) => t.id !== transaction.id && counterpartyIdentity(t) === identity);
+    const before = new Map(sameCounterparty.map((t) => [t.id, t.category?.categoryId]));
+    const learned = LearnedCategories.from(await this.transactions.findManuallyCategorized());
+    this.categorizer.categorize(sameCounterparty, await this.rules.findAll(), learned);
+    const changed = sameCounterparty.filter((t) => t.category?.categoryId !== before.get(t.id));
+    await this.transactions.saveMany(changed);
+    return { alsoApplied: changed.length };
   }
 }

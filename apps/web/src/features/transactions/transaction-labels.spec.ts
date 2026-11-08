@@ -39,6 +39,7 @@ describe('paymentBadge', () => {
 describe('explain', () => {
   it('says where the category and the classification came from', () => {
     expect(explain(t({ category: { id: 'x', source: 'rule' } }))).toContain('Categoria definida por uma regra sua.');
+    expect(explain(t({ category: { id: 'x', source: 'learned' } }))[0]).toMatch(/aprendida com uma correção sua/);
     expect(
       explain(t({ classification: 'internal_transfer', classificationSource: 'matcher', paymentMethod: 'pix' }))[1],
     ).toMatch(/de uma conta sua e entrou em outra sua/);

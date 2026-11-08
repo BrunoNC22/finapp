@@ -46,6 +46,10 @@ export class InMemoryTransactionRepository extends TransactionRepository {
       .map(restore);
   }
 
+  async findManuallyCategorized(): Promise<Transaction[]> {
+    return [...this.rows.values()].filter((r) => r.state.category?.source === 'manual').map(restore);
+  }
+
   /** Inspeção para testes. */
   get size(): number {
     return this.rows.size;

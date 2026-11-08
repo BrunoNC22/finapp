@@ -114,7 +114,7 @@ describe('categorization use cases', () => {
     it('sets a manual category that automation will not override', async () => {
       await transactions.save(aTransaction().withId('t1').withProviderCategory('prov-gym').build());
 
-      await new CategorizeTransactionManually(transactions, categories).execute({
+      await new CategorizeTransactionManually(transactions, categories, rules, categorizer).execute({
         transactionId: 't1',
         categoryId: 'transporte.app',
       });
@@ -124,10 +124,36 @@ describe('categorization use cases', () => {
       expect(tx?.category).toEqual({ categoryId: 'transporte.app', source: 'manual' });
     });
 
+    it('applies the correction to the same counterparty in every month, in the same direction only', async () => {
+      const pixTo = (id: string, day: string, cents: number, name: string) =>
+        aTransaction().withId(id).on(day).withAmount(cents).withPaymentMethod('pix').withCounterparty(name).build();
+      await transactions.saveMany([
+        pixTo('nov', '2026-11-03', -1800, 'Empresa X'),
+        pixTo('jun', '2026-06-10', -2100, 'Empresa X'),
+        pixTo('jan', '2026-01-20', -900, 'Empresa X'),
+        pixTo('refund', '2026-06-11', 2100, 'Empresa X'),
+        pixTo('friend', '2026-06-10', -2100, 'Outra Pessoa'),
+      ]);
+
+      const result = await new CategorizeTransactionManually(transactions, categories, rules, categorizer).execute({
+        transactionId: 'nov',
+        categoryId: 'transporte.app',
+      });
+
+      expect(result.alsoApplied).toBe(2);
+      expect((await transactions.findById('jun'))?.category).toEqual({
+        categoryId: 'transporte.app',
+        source: 'learned',
+      });
+      expect((await transactions.findById('jan'))?.category?.categoryId).toBe('transporte.app');
+      expect((await transactions.findById('refund'))?.category?.categoryId).not.toBe('transporte.app');
+      expect((await transactions.findById('friend'))?.category?.categoryId).not.toBe('transporte.app');
+    });
+
     it('rejects unknown categories', async () => {
       await transactions.save(aTransaction().withId('t1').build());
       await expect(
-        new CategorizeTransactionManually(transactions, categories).execute({
+        new CategorizeTransactionManually(transactions, categories, rules, categorizer).execute({
           transactionId: 't1',
           categoryId: 'nope',
         }),

@@ -27,7 +27,8 @@ export type TransactionStatus = 'pending' | 'posted';
 export type Classification = 'income' | 'expense' | 'internal_transfer' | 'ignored';
 /** Quem decidiu a classificação. Uma decisão manual nunca é sobrescrita automaticamente. */
 export type ClassificationSource = 'default' | 'matcher' | 'manual';
-export type CategorySource = 'provider' | 'rule' | 'manual';
+/** `learned`: aprendida com correções manuais do usuário para a mesma contraparte. */
+export type CategorySource = 'provider' | 'rule' | 'learned' | 'manual';
 export type Direction = 'inflow' | 'outflow' | 'none';
 
 export interface Counterparty {
@@ -64,7 +65,7 @@ export interface TransactionState {
   readonly category?: CategoryAssignment;
 }
 
-const CATEGORY_PRECEDENCE: Record<CategorySource, number> = { provider: 0, rule: 1, manual: 2 };
+const CATEGORY_PRECEDENCE: Record<CategorySource, number> = { provider: 0, rule: 1, learned: 2, manual: 3 };
 
 /**
  * Movimento financeiro em uma conta do usuário (raiz de agregado).

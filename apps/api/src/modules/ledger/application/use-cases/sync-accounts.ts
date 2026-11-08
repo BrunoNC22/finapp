@@ -4,6 +4,7 @@ import { Document } from '../../../../shared/kernel/document.js';
 import { LocalDate } from '../../../../shared/kernel/local-date.js';
 import { Account } from '../../domain/account.js';
 import { Categorizer } from '../../domain/categorization/categorizer.js';
+import { LearnedCategories } from '../../domain/categorization/learned-categories.js';
 import { Installment } from '../../domain/installment.js';
 import { InternalTransferMatcher } from '../../domain/services/internal-transfer-matcher.js';
 import { Transaction, type TransactionProps } from '../../domain/transaction.js';
@@ -219,6 +220,7 @@ export class SyncAccounts {
     const categorization = new Categorizer(this.deps.provider.categoryMap).categorize(
       transactions,
       await this.deps.rules.findAll(),
+      LearnedCategories.from(await this.deps.transactions.findManuallyCategorized()),
     );
     await this.deps.transactions.saveMany(transactions);
     return {

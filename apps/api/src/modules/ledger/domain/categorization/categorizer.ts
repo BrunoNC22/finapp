@@ -1,5 +1,6 @@
 import type { PaymentMethod, Transaction } from '../transaction.js';
 import type { CategorizationRule } from './categorization-rule.js';
+import { LearnedCategories } from './learned-categories.js';
 
 /**
  * Porta: traduz a categoria sugerida pelo provedor de Open Finance para a taxonomia do app.
@@ -10,6 +11,8 @@ export interface ProviderCategoryMap {
 }
 
 export interface CategorizationReport {
+  /** Aprendidas com correções manuais para a mesma contraparte. */
+  readonly learned: number;
   readonly rule: number;
   readonly paymentMethod: number;
   readonly provider: number;
@@ -36,15 +39,20 @@ const FALLBACK_BY_PAYMENT_METHOD: Partial<Record<PaymentMethod, string>> = {
 
 /**
  * Atribui categorias com a precedência:
- * manual > regra do usuário > forma de pagamento (forte) > provedor > forma de pagamento (fallback).
+ * manual > aprendida das correções manuais > regra > forma de pagamento (forte) > provedor > forma (fallback).
+ * A aprendida vem antes das regras: é a decisão do próprio usuário sobre AQUELA contraparte.
  * Recalcula do zero o que não é manual: mudar ou apagar uma regra reflete na próxima execução.
  */
 export class Categorizer {
   constructor(private readonly providerMap: ProviderCategoryMap) {}
 
-  categorize(transactions: readonly Transaction[], rules: readonly CategorizationRule[]): CategorizationReport {
+  categorize(
+    transactions: readonly Transaction[],
+    rules: readonly CategorizationRule[],
+    learned: LearnedCategories = LearnedCategories.none(),
+  ): CategorizationReport {
     const ordered = [...rules].filter((r) => r.enabled).sort((a, b) => a.priority - b.priority);
-    const report = { rule: 0, paymentMethod: 0, provider: 0, uncategorized: 0, skipped: 0 };
+    const report = { learned: 0, rule: 0, paymentMethod: 0, provider: 0, uncategorized: 0, skipped: 0 };
 
     for (const transaction of transactions) {
       if (transaction.classification === 'internal_transfer' || transaction.classification === 'ignored') {
@@ -58,6 +66,12 @@ export class Categorizer {
       }
       transaction.clearAutomaticCategory();
 
+      const fromCorrections = learned.categoryFor(transaction);
+      if (fromCorrections) {
+        transaction.categorize(fromCorrections, 'learned');
+        report.learned++;
+        continue;
+      }
       const rule = ordered.find((r) => r.matches(transaction));
       if (rule) {
         transaction.categorize(rule.categoryId, 'rule');

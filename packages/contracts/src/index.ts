@@ -28,7 +28,7 @@ export const PaymentMethodSchema = z.enum([
 ]);
 export const ClassificationSchema = z.enum(['income', 'expense', 'internal_transfer', 'ignored']);
 export const ClassificationSourceSchema = z.enum(['default', 'matcher', 'manual']);
-export const CategorySourceSchema = z.enum(['provider', 'rule', 'manual']);
+export const CategorySourceSchema = z.enum(['provider', 'rule', 'learned', 'manual']);
 export const CategoryKindSchema = z.enum(['expense', 'income', 'saving']);
 
 export const pageOf = <T extends z.ZodType>(item: T) =>

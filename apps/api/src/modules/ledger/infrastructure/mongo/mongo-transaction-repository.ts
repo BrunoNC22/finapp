@@ -109,6 +109,10 @@ export class MongoTransactionRepository extends TransactionRepository {
       .toArray();
     return docs.map(toEntity);
   }
+
+  async findManuallyCategorized(): Promise<Transaction[]> {
+    return (await this.collection.find({ 'category.source': 'manual' }).toArray()).map(toEntity);
+  }
 }
 
 function toDocument(transaction: Transaction): TransactionDocument {

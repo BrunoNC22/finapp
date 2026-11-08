@@ -4,6 +4,7 @@ import { SYNTHETIC_CPF, SYNTHETIC_CPF_DIGITS } from '../../../../../test/fixture
 import { Money } from '../../../../shared/kernel/money.js';
 import { CategorizationRule, InvalidRuleError } from './categorization-rule.js';
 import { Categorizer, type ProviderCategoryMap } from './categorizer.js';
+import { LearnedCategories } from './learned-categories.js';
 
 class StubProviderMap implements ProviderCategoryMap {
   constructor(private readonly map: Record<string, string>) {}
@@ -148,6 +149,31 @@ describe('Categorizer', () => {
       ],
       [rule({ categoryId: 'transporte.app', descriptionContains: 'corridas' })],
     );
-    expect(report).toEqual({ provider: 1, rule: 1, paymentMethod: 0, uncategorized: 1, skipped: 0 });
+    expect(report).toEqual({ learned: 0, provider: 1, rule: 1, paymentMethod: 0, uncategorized: 1, skipped: 0 });
+  });
+
+  it('a category learned from the user corrections beats rules and the provider, but not a manual choice', () => {
+    const example = aTransaction().withAmount(-1500).withPaymentMethod('pix').withCounterparty('Empresa X').build();
+    example.categorize('transporte.app', 'manual');
+    const learned = LearnedCategories.from([example]);
+    const other = aTransaction()
+      .withAmount(-2200)
+      .withPaymentMethod('pix')
+      .withDescription('Corridas')
+      .withCounterparty('Empresa X')
+      .withProviderCategory('prov-gym')
+      .build();
+    const manual = aTransaction().withAmount(-900).withPaymentMethod('pix').withCounterparty('Empresa X').build();
+    manual.categorize('lazer.outros', 'manual');
+
+    const report = new Categorizer(providerMap).categorize(
+      [other, manual],
+      [rule({ categoryId: 'alimentacao.mercado', descriptionContains: 'corrida' })],
+      learned,
+    );
+
+    expect(other.category).toEqual({ categoryId: 'transporte.app', source: 'learned' });
+    expect(manual.category).toEqual({ categoryId: 'lazer.outros', source: 'manual' });
+    expect(report.learned).toBe(1);
   });
 });

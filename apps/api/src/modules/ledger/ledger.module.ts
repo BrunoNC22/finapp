@@ -101,8 +101,13 @@ function openFinanceProvider(config: AppConfig, clock: Clock): OpenFinanceProvid
     },
     {
       provide: CategorizeTransactionManually,
-      useFactory: (t: TransactionRepository, c: CategoryRepository) => new CategorizeTransactionManually(t, c),
-      inject: [TransactionRepository, CategoryRepository],
+      useFactory: (
+        t: TransactionRepository,
+        c: CategoryRepository,
+        r: CategorizationRuleRepository,
+        provider: OpenFinanceProvider,
+      ) => new CategorizeTransactionManually(t, c, r, new Categorizer(provider.categoryMap)),
+      inject: [TransactionRepository, CategoryRepository, CategorizationRuleRepository, OpenFinanceProvider],
     },
     {
       provide: ClassifyTransactionManually,

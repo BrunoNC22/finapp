@@ -1,7 +1,7 @@
 import type { LocalDate } from '../../../../shared/kernel/local-date.js';
 import { Money } from '../../../../shared/kernel/money.js';
 import { foldText } from '../categorization/categorization-rule.js';
-import { normalizeMerchant } from '../services/installment-grouper.js';
+import { normalizeMerchant, withoutGatewayPrefix } from '../services/installment-grouper.js';
 import type { Transaction } from '../transaction.js';
 
 export interface Recurring {
@@ -158,12 +158,6 @@ export class RecurringDetector {
       }
     }
   }
-}
-
-/** Códigos de 1–2 letras que gateways põem antes do nome ("EC LOJA", "DL LOJA"). */
-function withoutGatewayPrefix(merchant: string): string {
-  const words = merchant.split(' ');
-  return words.length >= 3 && (words[0]?.length ?? 0) <= 2 ? words.slice(1).join(' ') : merchant;
 }
 
 /** Palavras de localização comuns em descritores: não identificam o estabelecimento. */
