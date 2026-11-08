@@ -1,6 +1,7 @@
 import { LocalDate } from '../../../shared/kernel/local-date.js';
 import { Money } from '../../../shared/kernel/money.js';
 import { YearMonth } from '../../../shared/kernel/year-month.js';
+import type { CareerProfileRepository, OpportunityRepository } from '../../career/application/career.js';
 import type { AccountRepository } from '../../ledger/application/ports/account-repository.js';
 import type { CategoryRepository } from '../../ledger/application/ports/category-repository.js';
 import type { TransactionQueries } from '../../ledger/application/ports/transaction-queries.js';
@@ -40,6 +41,8 @@ export interface FinanceAssistantDeps {
   readonly goals: GoalRepository;
   readonly plan: GetGoalPlan;
   readonly requiredIncome: GetRequiredIncome;
+  readonly profiles: CareerProfileRepository;
+  readonly opportunitiesRepo: OpportunityRepository;
 }
 
 /** Monta as respostas do assistente a partir dos casos de uso do ledger e do planejamento. */
@@ -296,6 +299,48 @@ export class FinanceAssistantData extends AssistantData {
           comeca_em: step.startMonth?.toString() ?? null,
         })),
       },
+    };
+  }
+
+  async profile(): Promise<Json> {
+    const profile = await this.deps.profiles.get();
+    if (!profile)
+      return { perfil: null, aviso: 'O usuário ainda não preencheu o perfil profissional (tela Carreira).' };
+    const p = profile.props;
+    return {
+      titulo: p.headline,
+      resumo: p.summary,
+      local: p.location,
+      preferencias: {
+        modelos: p.preferences.workModes,
+        remoto: p.preferences.remote,
+        presencial: p.preferences.inPerson,
+      },
+      ingles: p.english,
+      horas_por_semana_disponiveis: p.hoursPerWeek ?? null,
+      skills: p.skills,
+      experiencias: p.experiences.map((e) => ({ ...e, em_andamento: !e.end })),
+      formacao: p.education,
+      links: p.links,
+      curriculo_markdown: p.resumeMarkdown,
+    };
+  }
+
+  async opportunities(onlyOpen: boolean): Promise<Json> {
+    const all = await this.deps.opportunitiesRepo.findAll();
+    return {
+      oportunidades: all
+        .filter((o) => !onlyOpen || o.isOpen)
+        .map((o) => ({
+          titulo: o.props.title,
+          tipo: o.props.kind,
+          status: o.props.status,
+          por_mes: o.props.estimatedMonthly ? reais(o.props.estimatedMonthly) : null,
+          de_uma_vez: o.props.estimatedOneOff ? reais(o.props.estimatedOneOff) : null,
+          link: o.props.link ?? null,
+          notas: o.props.notes,
+          atualizada_em: o.props.updatedAt.toISOString().slice(0, 10),
+        })),
     };
   }
 }

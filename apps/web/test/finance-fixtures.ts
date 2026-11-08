@@ -1,7 +1,9 @@
 import type {
   AccountDto,
+  CareerProfileDto,
   CategoryDto,
   CreateIncomeSourceCommand,
+  CreateOpportunityCommand,
   GoalCommand,
   GoalDto,
   GoalPlanDto,
@@ -9,11 +11,13 @@ import type {
   IncomeSourceDto,
   InstallmentPurchaseDto,
   MonthlyReportDto,
+  OpportunityDto,
   RequiredIncomeDto,
   SyncRunDto,
   TransactionDto,
   TransactionPageDto,
   UpdateIncomeSourceCommand,
+  UpdateOpportunityCommand,
 } from '@finapp/contracts';
 import { ApiError } from '../src/lib/api/api-client';
 import type { FinanceApi, PlanQuery, TransactionSearch } from '../src/lib/api/finance-api';
@@ -342,6 +346,51 @@ export function aPlan(): GoalPlanDto {
   };
 }
 
+export const PROFILE: CareerProfileDto = {
+  headline: 'Desenvolvedora Full Stack',
+  summary: 'Perfil fictício.',
+  location: 'Cidade Exemplo',
+  preferences: { workModes: ['freela', 'pj'], remote: true, inPerson: false },
+  english: { reading: 'fluente', listening: 'fluente', writing: 'avancado', speaking: 'intermediario' },
+  skills: [
+    { name: 'TypeScript', level: 'avancado' },
+    { name: 'NestJS', level: 'intermediario' },
+  ],
+  experiences: [
+    {
+      title: 'Desenvolvedora',
+      organization: 'Empresa A',
+      start: '2025-01',
+      end: '2026-11',
+      description: 'Sistemas web',
+    },
+  ],
+  education: [{ title: 'Bacharelado', institution: 'Instituto X', start: '2020-03' }],
+  links: [{ label: 'Portfólio', url: 'https://exemplo.dev' }],
+  resumeMarkdown: '# Fulana',
+};
+
+export const OPPORTUNITIES: OpportunityDto[] = [
+  {
+    id: 'o1',
+    title: 'Agente de IA no WhatsApp',
+    kind: 'recorrente',
+    status: 'ideia',
+    estimatedMonthly: brl(80000),
+    notes: 'Pequenos negócios',
+    updatedAt: '2026-11-08T12:00:00.000Z',
+  },
+  {
+    id: 'o2',
+    title: 'Vaga PJ remota',
+    kind: 'vaga',
+    status: 'aplicada',
+    estimatedMonthly: brl(650000),
+    notes: '',
+    updatedAt: '2026-11-07T12:00:00.000Z',
+  },
+];
+
 /** API de dados falsa (stub + spy), escrita à mão. */
 export class FakeFinanceApi implements FinanceApi {
   readonly calls: string[] = [];
@@ -471,6 +520,48 @@ export class FakeFinanceApi implements FinanceApi {
     this.planQueries.push(query);
     return this.plan;
   }
+  // ---------------------------------------------------------------- carreira
+  profile: CareerProfileDto | null = PROFILE;
+  opportunityList: OpportunityDto[] = [...OPPORTUNITIES];
+  async careerProfile() {
+    return this.profile;
+  }
+  async saveCareerProfile(profile: CareerProfileDto) {
+    this.calls.push('save-profile');
+    this.sent.push(profile);
+    this.profile = profile;
+    return profile;
+  }
+  async opportunities() {
+    return this.opportunityList;
+  }
+  async createOpportunity(command: CreateOpportunityCommand) {
+    this.calls.push('create-opportunity');
+    this.sent.push(command);
+    const created: OpportunityDto = {
+      id: `o${this.opportunityList.length + 1}`,
+      title: command.title,
+      kind: command.kind,
+      status: command.status ?? 'ideia',
+      notes: command.notes ?? '',
+      updatedAt: '2026-11-08T12:00:00.000Z',
+    };
+    this.opportunityList = [created, ...this.opportunityList];
+    return created;
+  }
+  async updateOpportunity(id: string, command: UpdateOpportunityCommand) {
+    this.calls.push(`update-opportunity:${id}`);
+    this.sent.push(command);
+    this.opportunityList = this.opportunityList.map((o) =>
+      o.id === id && command.status ? { ...o, status: command.status } : o,
+    );
+    return this.opportunityList.find((o) => o.id === id) as OpportunityDto;
+  }
+  async deleteOpportunity(id: string) {
+    this.calls.push(`delete-opportunity:${id}`);
+    this.opportunityList = this.opportunityList.filter((o) => o.id !== id);
+  }
+
   async requiredIncome(query: PlanQuery & { deadline?: string }): Promise<RequiredIncomeDto> {
     this.planQueries.push(query);
     return {

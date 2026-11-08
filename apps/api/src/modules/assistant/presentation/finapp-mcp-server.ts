@@ -133,5 +133,32 @@ export function createFinappMcpServer(data: AssistantData): McpServer {
     async ({ prazo }) => result(await data.goals(prazo)),
   );
 
+  server.registerTool(
+    'perfil_profissional',
+    {
+      title: 'Perfil profissional',
+      description:
+        'Resumo, preferências de trabalho (freela/PJ/CLT, remoto), nível de inglês por habilidade, horas disponíveis, ' +
+        'skills, experiências (as sem fim estão em andamento), formação, links e o currículo em Markdown. Use para ' +
+        'sugerir caminhos realistas de aumento de renda.',
+      inputSchema: {},
+      annotations: readOnly,
+    },
+    async () => result(await data.profile()),
+  );
+
+  server.registerTool(
+    'oportunidades',
+    {
+      title: 'Oportunidades de renda',
+      description:
+        'Oportunidades que o usuário acompanha (freelas, clientes recorrentes, vagas, bolsas), com status ' +
+        '(ideia, aplicada, conversa, fechada, perdida), valores estimados (por mês ou de uma vez) e notas.',
+      inputSchema: { apenas_abertas: z.boolean().default(true) },
+      annotations: readOnly,
+    },
+    async ({ apenas_abertas }) => result(await data.opportunities(apenas_abertas)),
+  );
+
   return server;
 }

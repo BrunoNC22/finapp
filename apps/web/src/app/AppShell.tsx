@@ -6,6 +6,7 @@ const NAV = [
   { to: '/parcelas', label: 'Parcelas' },
   { to: '/metas', label: 'Metas' },
   { to: '/renda', label: 'Renda' },
+  { to: '/carreira', label: 'Carreira' },
   { to: '/contas', label: 'Contas' },
   { to: '/configuracoes', label: 'Configurações' },
 ];

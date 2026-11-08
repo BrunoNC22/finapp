@@ -23,4 +23,8 @@ export abstract class AssistantData {
   abstract recurring(): Promise<Json>;
   abstract income(months: number): Promise<Json>;
   abstract goals(deadline?: string): Promise<Json>;
+  /** Perfil profissional (resumo, preferências, inglês, skills, experiências, currículo). */
+  abstract profile(): Promise<Json>;
+  /** Oportunidades de renda acompanhadas; `abertas` = nem fechadas, nem perdidas. */
+  abstract opportunities(onlyOpen: boolean): Promise<Json>;
 }

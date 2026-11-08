@@ -1,7 +1,9 @@
 import type {
   AccountDto,
+  CareerProfileDto,
   CategoryDto,
   CreateIncomeSourceCommand,
+  CreateOpportunityCommand,
   GoalCommand,
   GoalDto,
   GoalPlanDto,
@@ -9,11 +11,13 @@ import type {
   IncomeSourceDto,
   InstallmentPurchaseDto,
   MonthlyReportDto,
+  OpportunityDto,
   RequiredIncomeDto,
   SyncRunDto,
   TransactionDto,
   TransactionPageDto,
   UpdateIncomeSourceCommand,
+  UpdateOpportunityCommand,
 } from '@finapp/contracts';
 
 /** Porta usada pelas telas de dados (o teste usa um dublê manual, FakeFinanceApi). */
@@ -45,6 +49,15 @@ export interface FinanceApi {
   reorderGoals(ids: string[]): Promise<void>;
   goalPlan(query: PlanQuery): Promise<GoalPlanDto>;
   requiredIncome(query: PlanQuery & { deadline?: string }): Promise<RequiredIncomeDto>;
+
+  // Carreira
+  /** undefined enquanto o perfil não foi preenchido. */
+  careerProfile(): Promise<CareerProfileDto | null>;
+  saveCareerProfile(profile: CareerProfileDto): Promise<CareerProfileDto>;
+  opportunities(): Promise<OpportunityDto[]>;
+  createOpportunity(command: CreateOpportunityCommand): Promise<OpportunityDto>;
+  updateOpportunity(id: string, command: UpdateOpportunityCommand): Promise<OpportunityDto>;
+  deleteOpportunity(id: string): Promise<void>;
 }
 
 export interface PlanQuery {

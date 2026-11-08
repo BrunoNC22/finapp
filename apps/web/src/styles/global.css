@@ -977,3 +977,78 @@ legend {
 .required-income .amount {
   white-space: normal;
 }
+
+/* ===================================================================== carreira (#27) */
+textarea {
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  width: 100%;
+  resize: vertical;
+}
+textarea.mono {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 0.85rem;
+}
+label.check {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 500;
+}
+.form-row.entry {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  padding-bottom: var(--space-2);
+  border-bottom: 1px dashed var(--border);
+}
+.form-grid.nested {
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-3);
+}
+.board {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(220px, 1fr);
+  gap: var(--space-3);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+}
+.board-column {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  min-height: 120px;
+}
+.board-column h3 {
+  font-size: 0.9rem;
+  margin: 0;
+}
+.board-card {
+  display: grid;
+  gap: 4px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.board-card p {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.board-card button:not(.link) {
+  padding: 2px 10px;
+}
+.board-card a {
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+}

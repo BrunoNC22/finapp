@@ -2,8 +2,11 @@ import {
   AccountSchema,
   type AuthStatusDto,
   AuthStatusSchema,
+  type CareerProfileDto,
+  CareerProfileSchema,
   CategorySchema,
   type CreateIncomeSourceCommand,
+  type CreateOpportunityCommand,
   type GoalCommand,
   GoalPlanSchema,
   GoalSchema,
@@ -13,6 +16,7 @@ import {
   type LoginResultDto,
   LoginResultSchema,
   MonthlyReportSchema,
+  OpportunitySchema,
   RequiredIncomeSchema,
   type SessionDto,
   SessionSchema,
@@ -21,6 +25,7 @@ import {
   TransactionPageSchema,
   TransactionSchema,
   type UpdateIncomeSourceCommand,
+  type UpdateOpportunityCommand,
 } from '@finapp/contracts';
 import type { ZodType } from 'zod';
 import type { SessionStore } from '../session/session-store';
@@ -190,6 +195,31 @@ export class ApiClient implements AuthApi, FinanceApi {
   }
   requiredIncome(query: PlanQuery & { deadline?: string }) {
     return this.request('GET', `/goals/required-income${planQueryString(query)}`, RequiredIncomeSchema);
+  }
+
+  // ---------------------------------------------------------------- carreira
+  async careerProfile() {
+    try {
+      return await this.request('GET', '/career/profile', CareerProfileSchema);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) return null;
+      throw error;
+    }
+  }
+  saveCareerProfile(profile: CareerProfileDto) {
+    return this.request('PUT', '/career/profile', CareerProfileSchema, profile);
+  }
+  opportunities() {
+    return this.request('GET', '/career/opportunities', OpportunitySchema.array());
+  }
+  createOpportunity(command: CreateOpportunityCommand) {
+    return this.request('POST', '/career/opportunities', OpportunitySchema, command);
+  }
+  updateOpportunity(id: string, command: UpdateOpportunityCommand) {
+    return this.request('PATCH', `/career/opportunities/${encodeURIComponent(id)}`, OpportunitySchema, command);
+  }
+  async deleteOpportunity(id: string) {
+    await this.request('DELETE', `/career/opportunities/${encodeURIComponent(id)}`);
   }
 
   /** Requisição genérica. */

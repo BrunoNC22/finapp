@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from 'react-router';
 import { AccountsPage } from '../features/accounts/AccountsPage';
+import { CareerPage } from '../features/career/CareerPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { GoalsPage } from '../features/goals/GoalsPage';
 import { IncomePage } from '../features/income/IncomePage';
@@ -20,6 +21,7 @@ export default function AuthenticatedApp() {
           <Route path="metas" element={<GoalsPage />} />
           <Route path="renda" element={<IncomePage />} />
           <Route path="contas" element={<AccountsPage />} />
+          <Route path="carreira" element={<CareerPage />} />
           <Route path="configuracoes" element={<SettingsPage />} />
           <Route path="*" element={<Placeholder title="Página não encontrada" />} />
         </Route>

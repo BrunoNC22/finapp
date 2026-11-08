@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { CareerProfileRepository, OpportunityRepository } from '../career/application/career.js';
+import { CareerModule } from '../career/career.module.js';
 import { IdentityModule } from '../identity/identity.module.js';
 import { AccountRepository } from '../ledger/application/ports/account-repository.js';
 import { CategoryRepository } from '../ledger/application/ports/category-repository.js';
@@ -17,7 +19,7 @@ import { McpController } from './presentation/mcp.controller.js';
 
 /** Assistente: servidor MCP somente leitura para o Claude Code (ADR 0013). */
 @Module({
-  imports: [IdentityModule, LedgerModule, PlanningModule],
+  imports: [IdentityModule, LedgerModule, PlanningModule, CareerModule],
   controllers: [McpController],
   providers: [
     {
@@ -33,6 +35,8 @@ import { McpController } from './presentation/mcp.controller.js';
         goals: GoalRepository,
         plan: GetGoalPlan,
         requiredIncome: GetRequiredIncome,
+        profiles: CareerProfileRepository,
+        opportunitiesRepo: OpportunityRepository,
       ) =>
         new FinanceAssistantData({
           report,
@@ -45,6 +49,8 @@ import { McpController } from './presentation/mcp.controller.js';
           goals,
           plan,
           requiredIncome,
+          profiles,
+          opportunitiesRepo,
         }),
       inject: [
         GetMonthlyReport,
@@ -57,6 +63,8 @@ import { McpController } from './presentation/mcp.controller.js';
         GoalRepository,
         GetGoalPlan,
         GetRequiredIncome,
+        CareerProfileRepository,
+        OpportunityRepository,
       ],
     },
   ],

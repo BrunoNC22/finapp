@@ -498,3 +498,74 @@ export const RequiredIncomeSchema = z.object({
   ),
 });
 export type RequiredIncomeDto = z.infer<typeof RequiredIncomeSchema>;
+
+// ------------------------------------------------------------------ carreira
+const LanguageLevelSchema = z.enum(['basico', 'intermediario', 'avancado', 'fluente']);
+const text = (max: number) => z.string().trim().max(max);
+const period = { start: YearMonthSchema, end: YearMonthSchema.optional() };
+
+export const CareerProfileSchema = z.object({
+  headline: text(80).min(1),
+  summary: text(2000),
+  location: text(80),
+  preferences: z.object({
+    workModes: z.array(z.enum(['freela', 'pj', 'clt'])).max(3),
+    remote: z.boolean(),
+    inPerson: z.boolean(),
+  }),
+  english: z.object({
+    reading: LanguageLevelSchema,
+    listening: LanguageLevelSchema,
+    writing: LanguageLevelSchema,
+    speaking: LanguageLevelSchema,
+  }),
+  /** Horas por semana para trabalho extra; ausente = ainda não sabe. */
+  hoursPerWeek: z.number().int().min(0).max(80).optional(),
+  skills: z.array(z.object({ name: text(40).min(1), level: z.enum(['basico', 'intermediario', 'avancado']) })).max(60),
+  experiences: z
+    .array(z.object({ title: text(80).min(1), organization: text(80), description: text(1000), ...period }))
+    .max(30),
+  education: z.array(z.object({ title: text(120).min(1), institution: text(120), ...period })).max(10),
+  links: z.array(z.object({ label: text(40).min(1), url: z.url() })).max(10),
+  resumeMarkdown: z.string().max(20_000),
+});
+export type CareerProfileDto = z.infer<typeof CareerProfileSchema>;
+
+export const OpportunityKindSchema = z.enum(['freela', 'recorrente', 'vaga', 'bolsa', 'outro']);
+export const OpportunityStatusSchema = z.enum(['ideia', 'aplicada', 'conversa', 'fechada', 'perdida']);
+
+export const OpportunitySchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  kind: OpportunityKindSchema,
+  status: OpportunityStatusSchema,
+  estimatedMonthly: MoneySchema.optional(),
+  estimatedOneOff: MoneySchema.optional(),
+  link: z.string().optional(),
+  notes: z.string(),
+  updatedAt: z.string(),
+});
+export type OpportunityDto = z.infer<typeof OpportunitySchema>;
+
+export const CreateOpportunityCommandSchema = z.object({
+  title: text(120).min(1),
+  kind: OpportunityKindSchema,
+  status: OpportunityStatusSchema.default('ideia'),
+  estimatedMonthlyCents: z.number().int().min(0).optional(),
+  estimatedOneOffCents: z.number().int().min(0).optional(),
+  link: z.url().optional(),
+  notes: text(2000).default(''),
+});
+export type CreateOpportunityCommand = z.input<typeof CreateOpportunityCommandSchema>;
+
+/** Campos ausentes não mudam; `null` limpa estimativas e link. */
+export const UpdateOpportunityCommandSchema = z.object({
+  title: text(120).min(1).optional(),
+  kind: OpportunityKindSchema.optional(),
+  status: OpportunityStatusSchema.optional(),
+  estimatedMonthlyCents: z.number().int().min(0).nullable().optional(),
+  estimatedOneOffCents: z.number().int().min(0).nullable().optional(),
+  link: z.url().nullable().optional(),
+  notes: text(2000).optional(),
+});
+export type UpdateOpportunityCommand = z.input<typeof UpdateOpportunityCommandSchema>;

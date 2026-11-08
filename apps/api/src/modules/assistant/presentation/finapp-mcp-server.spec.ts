@@ -32,6 +32,12 @@ class FakeAssistantData extends AssistantData {
   async goals(deadline?: string) {
     return this.record('goals', deadline);
   }
+  async profile() {
+    return this.record('profile');
+  }
+  async opportunities(onlyOpen: boolean) {
+    return this.record('opportunities', onlyOpen);
+  }
 }
 
 async function connected() {
@@ -54,6 +60,8 @@ describe('finapp MCP server', () => {
       'gastos_por_categoria',
       'listar_transacoes',
       'metas_e_viabilidade',
+      'oportunidades',
+      'perfil_profissional',
       'recorrencias',
       'renda_e_cenarios',
       'resumo_do_mes',
@@ -74,11 +82,13 @@ describe('finapp MCP server', () => {
     await client.callTool({ name: 'gastos_por_categoria', arguments: {} });
     await client.callTool({ name: 'listar_transacoes', arguments: { busca: 'mercado' } });
     await client.callTool({ name: 'metas_e_viabilidade', arguments: { prazo: '2028-12' } });
+    await client.callTool({ name: 'oportunidades', arguments: {} });
     expect(data.calls).toEqual([
       ['monthSummary', '2026-10'],
       ['spendingByCategory', undefined, 'categoria'],
       ['transactions', { busca: 'mercado', limite: 30 }],
       ['goals', '2028-12'],
+      ['opportunities', true],
     ]);
   });
 

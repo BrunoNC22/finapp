@@ -12,6 +12,7 @@ import { ConfigModule } from '../../../shared/config/config.module.js';
 import { MongoModule } from '../../../shared/infrastructure/mongo/mongo.module.js';
 import { Money } from '../../../shared/kernel/money.js';
 import { YearMonth } from '../../../shared/kernel/year-month.js';
+import { CareerModule } from '../../career/career.module.js';
 import { PasskeyService } from '../../identity/application/ports/identity-ports.js';
 import { AuthService } from '../../identity/application/use-cases/auth.js';
 import { McpAccess } from '../../identity/application/use-cases/mcp-access.js';
@@ -61,7 +62,7 @@ describe('MCP over HTTP (demo ledger, real MongoDB)', () => {
       SYNC_INTERVAL_HOURS: '0',
     });
     const moduleRef = await Test.createTestingModule({
-      imports: [ConfigModule, MongoModule, IdentityModule, LedgerModule, PlanningModule, AssistantModule],
+      imports: [ConfigModule, MongoModule, IdentityModule, LedgerModule, PlanningModule, CareerModule, AssistantModule],
     })
       .overrideProvider(AppConfig)
       .useValue(config)
@@ -124,7 +125,7 @@ describe('MCP over HTTP (demo ledger, real MongoDB)', () => {
     expect(init.statusCode).toBe(200);
     expect(init.json().result.serverInfo.name).toBe('finapp');
     const list = await rpc('tools/list', {});
-    expect(list.json().result.tools).toHaveLength(7);
+    expect(list.json().result.tools).toHaveLength(9);
   });
 
   it('answers with the real data, in reais, without documents', async () => {
@@ -145,7 +146,9 @@ describe('MCP over HTTP (demo ledger, real MongoDB)', () => {
     expect(income.fontes[0]).toMatchObject({ nome: 'Bolsa de pesquisa', risco: 'low' });
     expect(income.projecao[0].meses).toHaveLength(6);
 
-    for (const name of ['gastos_por_categoria', 'compromissos_futuros', 'recorrencias']) await tool(name);
+    for (const name of ['gastos_por_categoria', 'compromissos_futuros', 'recorrencias', 'oportunidades'])
+      await tool(name);
+    expect((await tool('perfil_profissional')).perfil).toBeNull();
   });
 
   it('GET and DELETE are not part of a stateless server', async () => {

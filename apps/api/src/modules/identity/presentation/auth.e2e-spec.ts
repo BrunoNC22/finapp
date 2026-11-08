@@ -13,6 +13,7 @@ import { AppConfig } from '../../../shared/config/app-config.js';
 import { ConfigModule } from '../../../shared/config/config.module.js';
 import { MongoModule } from '../../../shared/infrastructure/mongo/mongo.module.js';
 import { IS_PUBLIC } from '../../../shared/presentation/public.decorator.js';
+import { CareerModule } from '../../career/career.module.js';
 import { HealthModule } from '../../health/health.module.js';
 import { LedgerModule } from '../../ledger/ledger.module.js';
 import { PlanningModule } from '../../planning/planning.module.js';
@@ -49,7 +50,16 @@ describe('authentication (bank-app style)', () => {
       SYNC_INTERVAL_HOURS: '0',
     });
     const moduleRef = await Test.createTestingModule({
-      imports: [DiscoveryModule, ConfigModule, MongoModule, IdentityModule, HealthModule, LedgerModule, PlanningModule],
+      imports: [
+        DiscoveryModule,
+        ConfigModule,
+        MongoModule,
+        IdentityModule,
+        HealthModule,
+        LedgerModule,
+        PlanningModule,
+        CareerModule,
+      ],
     })
       .overrideProvider(AppConfig)
       .useValue(config)
