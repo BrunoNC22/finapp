@@ -6,13 +6,23 @@ import {
   GoalPlanQuerySchema,
   type MoneyDto,
   ReorderGoalsCommandSchema,
+  type RequiredIncomeDto,
+  RequiredIncomeQuerySchema,
 } from '@finapp/contracts';
 import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, Put, Query } from '@nestjs/common';
 import type { z } from 'zod';
 import { Money } from '../../../shared/kernel/money.js';
+import { YearMonth } from '../../../shared/kernel/year-month.js';
 import { ZodPipe } from '../../../shared/presentation/zod-pipe.js';
 import { GoalRepository } from '../application/ports/goal-ports.js';
-import { CreateGoal, DeleteGoal, GetGoalPlan, ReorderGoals, ReplaceGoal } from '../application/use-cases/goals.js';
+import {
+  CreateGoal,
+  DeleteGoal,
+  GetGoalPlan,
+  GetRequiredIncome,
+  ReorderGoals,
+  ReplaceGoal,
+} from '../application/use-cases/goals.js';
 import type { Goal, GoalProps } from '../domain/goals/goal.js';
 
 const money = (value: Money): MoneyDto => ({ cents: value.cents, currency: 'BRL' });
@@ -62,7 +72,33 @@ export class GoalsController {
     @Inject(DeleteGoal) private readonly remove: DeleteGoal,
     @Inject(ReorderGoals) private readonly reorderGoals: ReorderGoals,
     @Inject(GetGoalPlan) private readonly plan: GetGoalPlan,
+    @Inject(GetRequiredIncome) private readonly required: GetRequiredIncome,
   ) {}
+
+  /** Renda mensal estável mínima para cada meta da sequência (cumulativa). */
+  @Get('required-income')
+  async requiredIncome(
+    @Query(new ZodPipe(RequiredIncomeQuerySchema))
+    query: { months: number; deadline?: string; startingSavingsCents?: number; minSlackPercent: number },
+  ): Promise<RequiredIncomeDto> {
+    const result = await this.required.execute({
+      months: query.months,
+      minSlackPercent: query.minSlackPercent,
+      ...(query.deadline ? { deadline: YearMonth.parse(query.deadline) } : {}),
+      ...(query.startingSavingsCents !== undefined
+        ? { startingSavings: Money.fromCents(query.startingSavingsCents) }
+        : {}),
+    });
+    return {
+      months: result.months.map(String),
+      ...(result.deadline ? { deadline: result.deadline.toString() } : {}),
+      steps: result.steps.map((s) => ({
+        goalId: s.goalId,
+        ...(s.monthlyIncome ? { monthlyIncome: money(s.monthlyIncome) } : {}),
+        ...(s.startMonth ? { startMonth: s.startMonth.toString() } : {}),
+      })),
+    };
+  }
 
   @Get()
   async list(): Promise<GoalDto[]> {

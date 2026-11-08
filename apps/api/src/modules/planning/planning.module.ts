@@ -9,7 +9,14 @@ import { ListIncomeEntries } from '../ledger/application/use-cases/list-income-e
 import { LedgerModule } from '../ledger/ledger.module.js';
 import { GoalRepository, HouseholdFinances } from './application/ports/goal-ports.js';
 import { IncomeLedger, IncomeSourceRepository } from './application/ports/income-ports.js';
-import { CreateGoal, DeleteGoal, GetGoalPlan, ReorderGoals, ReplaceGoal } from './application/use-cases/goals.js';
+import {
+  CreateGoal,
+  DeleteGoal,
+  GetGoalPlan,
+  GetRequiredIncome,
+  ReorderGoals,
+  ReplaceGoal,
+} from './application/use-cases/goals.js';
 import {
   CreateIncomeSource,
   DeleteIncomeSource,
@@ -68,6 +75,11 @@ import { IncomeController } from './presentation/income.controller.js';
       useFactory: (g: GoalRepository, s: IncomeSourceRepository, f: HouseholdFinances, c: Clock) =>
         new GetGoalPlan(g, s, f, c),
       inject: [GoalRepository, IncomeSourceRepository, HouseholdFinances, Clock],
+    },
+    {
+      provide: GetRequiredIncome,
+      useFactory: (g: GoalRepository, f: HouseholdFinances, c: Clock) => new GetRequiredIncome(g, f, c),
+      inject: [GoalRepository, HouseholdFinances, Clock],
     },
     {
       provide: GetIncomeOverview,

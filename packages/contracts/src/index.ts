@@ -480,3 +480,21 @@ export const GoalPlanSchema = z.object({
   ),
 });
 export type GoalPlanDto = z.infer<typeof GoalPlanSchema>;
+
+export const RequiredIncomeQuerySchema = z.object({
+  months: z.coerce.number().int().min(6).max(120).default(60),
+  /** Realizar cada meta até este mês. */
+  deadline: YearMonthSchema.optional(),
+  startingSavingsCents: z.coerce.number().int().min(0).optional(),
+  minSlackPercent: z.coerce.number().int().min(0).max(50).default(10),
+});
+
+/** "Quanto preciso ganhar?": renda mensal estável mínima para cada meta da sequência (cumulativa). */
+export const RequiredIncomeSchema = z.object({
+  months: z.array(YearMonthSchema),
+  deadline: YearMonthSchema.optional(),
+  steps: z.array(
+    z.object({ goalId: z.string(), monthlyIncome: MoneySchema.optional(), startMonth: YearMonthSchema.optional() }),
+  ),
+});
+export type RequiredIncomeDto = z.infer<typeof RequiredIncomeSchema>;

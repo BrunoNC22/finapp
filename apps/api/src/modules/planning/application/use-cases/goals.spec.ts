@@ -14,6 +14,7 @@ import {
   CreateGoal,
   DeleteGoal,
   GetGoalPlan,
+  GetRequiredIncome,
   InvalidGoalOrderError,
   ReorderGoals,
   ReplaceGoal,
@@ -94,5 +95,24 @@ describe('goal use cases', () => {
       new FixedClock(new Date('2026-11-08T15:00:00Z')),
     ).execute({ months: 6, minSlackPercent: 10, startingSavings: r(50) });
     expect(plan.startingSavings.cents).toBe(5000);
+  });
+
+  it('required income: the stable monthly income that realizes each goal on the real cost of living', async () => {
+    const goals = new InMemoryGoalRepository();
+    await new CreateGoal(goals, new SequentialIdGenerator('meta')).execute(cnh);
+    const finances = new StubHouseholdFinances({ monthlySpending: r(1500), byCategory: new Map() }, Money.zero());
+    const result = await new GetRequiredIncome(
+      goals,
+      finances,
+      new FixedClock(new Date('2026-11-08T15:00:00Z')),
+    ).execute({
+      months: 12,
+      minSlackPercent: 10,
+      deadline: YearMonth.parse('2027-01'),
+    });
+    // 1.000 guardados até jan/27 (2 meses de sobra, nov e dez) → sobra de 500 → 2.000
+    expect(result.steps[0]?.monthlyIncome?.cents).toBe(200000);
+    expect(result.steps[0]?.startMonth?.toString()).toBe('2027-01');
+    expect(finances.requested[0]).toEqual({ from: '2026-05-01', to: '2026-10-31', months: 6 });
   });
 });

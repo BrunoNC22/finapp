@@ -1,4 +1,4 @@
-import { GoalPlanSchema, GoalSchema } from '@finapp/contracts';
+import { GoalPlanSchema, GoalSchema, RequiredIncomeSchema } from '@finapp/contracts';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -95,6 +95,15 @@ describe('goals HTTP API (demo ledger, real MongoDB)', () => {
     const floor = plan.scenarios.find((s) => s.id === 'floor');
     expect(floor?.goals.map((g) => g.goalId)).toEqual([cnh.id, bike.id]);
     expect(floor?.timeline).toHaveLength(24);
+
+    const required = RequiredIncomeSchema.parse(
+      (await call('GET', '/goals/required-income?months=24&startingSavingsCents=0&deadline=2027-06')).json(),
+    );
+    expect(required.steps.map((s) => s.goalId)).toEqual([cnh.id, bike.id]);
+    // cumulativa: a segunda meta nunca exige menos renda que a primeira
+    const [first, second] = required.steps.map((s) => s.monthlyIncome?.cents ?? 0);
+    expect(second).toBeGreaterThanOrEqual(first ?? 0);
+    expect(required.steps.every((s) => s.startMonth && s.startMonth <= '2027-06')).toBe(true);
   });
 
   it('rejects invalid goals and unknown ids', async () => {

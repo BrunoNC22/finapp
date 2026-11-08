@@ -7,6 +7,7 @@ import type { Money } from '../../../../shared/kernel/money.js';
 import { YearMonth } from '../../../../shared/kernel/year-month.js';
 import { Goal, type GoalProps } from '../../domain/goals/goal.js';
 import { type Baseline, type PlanResult, simulatePlan } from '../../domain/goals/plan-simulator.js';
+import { type RequiredIncomeStep, requiredIncome } from '../../domain/goals/required-income.js';
 import { projectIncome } from '../../domain/income/income-projection.js';
 import { DEFAULT_SCENARIOS, type ScenarioId } from '../../domain/income/income-scenario.js';
 import type { GoalRepository, HouseholdFinances } from '../ports/goal-ports.js';
@@ -119,6 +120,47 @@ export class GetGoalPlan {
           minSlackRatio: input.minSlackPercent / 100,
         }),
       })),
+    };
+  }
+}
+
+/**
+ * "Quanto preciso ganhar?": a renda mensal estável mínima que realiza cada meta da sequência (e as anteriores),
+ * sobre o mesmo custo de vida real e saldo do plano. Serve de META DE RENDA para o usuário buscar.
+ */
+export class GetRequiredIncome {
+  constructor(
+    private readonly goals: GoalRepository,
+    private readonly finances: HouseholdFinances,
+    private readonly clock: Clock,
+    private readonly timeZone = 'America/Sao_Paulo',
+  ) {}
+
+  async execute(input: {
+    months: number;
+    deadline?: YearMonth;
+    startingSavings?: Money;
+    minSlackPercent: number;
+  }): Promise<{ months: YearMonth[]; deadline?: YearMonth; steps: RequiredIncomeStep[] }> {
+    const current = YearMonth.of(LocalDate.fromInstant(this.clock.now(), this.timeZone));
+    const first = current.addMonths(-BASELINE_MONTHS);
+    const [goals, baseline, available] = await Promise.all([
+      this.goals.findAll(),
+      this.finances.costOfLiving(first.firstDay(), current.addMonths(-1).lastDay(), BASELINE_MONTHS),
+      input.startingSavings ? Promise.resolve(input.startingSavings) : this.finances.availableBalance(),
+    ]);
+    const months = current.sequence(input.months);
+    return {
+      months,
+      ...(input.deadline ? { deadline: input.deadline } : {}),
+      steps: requiredIncome({
+        goals,
+        baseline,
+        months,
+        startingSavings: available,
+        minSlackRatio: input.minSlackPercent / 100,
+        ...(input.deadline ? { deadline: input.deadline } : {}),
+      }),
     };
   }
 }
