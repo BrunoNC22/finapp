@@ -75,6 +75,27 @@ describe('LearnedCategories', () => {
     expect(tie.categoryFor(pix(-100, 'Fulano'))).toBeUndefined();
   });
 
+  it('one counterparty, different purposes: follows the correction with the closest amount', () => {
+    // Pix para a mesma pessoa: 350 é aluguel, 120 é conta de luz
+    const learned = LearnedCategories.from([
+      corrected('moradia.aluguel', -35000, 'Fulana'),
+      corrected('moradia.contas', -12000, 'Fulana'),
+    ]);
+    expect(learned.categoryFor(pix(-35000, 'Fulana'))).toBe('moradia.aluguel');
+    expect(learned.categoryFor(pix(-33500, 'Fulana'))).toBe('moradia.aluguel'); // dentro de ±10%
+    expect(learned.categoryFor(pix(-12500, 'Fulana'))).toBe('moradia.contas');
+    expect(learned.categoryFor(pix(-80000, 'Fulana'))).toBeUndefined(); // longe de tudo e sem maioria
+  });
+
+  it('far from every example, the majority still decides', () => {
+    const learned = LearnedCategories.from([
+      corrected('transporte.app', -1500, 'Empresa X'),
+      corrected('transporte.app', -2200, 'Empresa X'),
+      corrected('lazer.outros', -9000, 'Empresa X'),
+    ]);
+    expect(learned.categoryFor(pix(-4500, 'Empresa X'))).toBe('transporte.app');
+  });
+
   it('only learns from manual choices', () => {
     const automatic = pix(-100, 'Fulano');
     automatic.categorize('outros', 'provider');

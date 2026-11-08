@@ -38,47 +38,67 @@ export interface LearnedDecision {
   readonly refund: boolean;
 }
 
+/** Diferença de valor (relativa) para uma correção valer como exemplo "do mesmo tipo". */
+const SAME_AMOUNT_TOLERANCE = 0.1;
+
+interface Example {
+  readonly categoryId: string;
+  readonly cents: number;
+  readonly refund: boolean;
+}
+
 /**
- * Categorias aprendidas com as correções manuais do usuário: a escolha feita para uma transação
- * vale para as outras da mesma contraparte, em todos os meses. Vence a maioria; empate não ensina nada.
+ * Categorias aprendidas com as correções manuais do usuário: a escolha feita para uma transação vale para as
+ * outras da mesma contraparte, em todos os meses. Se a mesma contraparte tem usos diferentes (ex.: Pix para a
+ * mãe de 350 = aluguel, de 120 = conta de luz), vale a correção de VALOR mais próximo (±10%); longe de todas,
+ * vale a maioria; empate não ensina nada.
  */
 export class LearnedCategories {
-  private constructor(private readonly byIdentity: ReadonlyMap<string, LearnedDecision>) {}
+  private constructor(private readonly byIdentity: ReadonlyMap<string, readonly Example[]>) {}
 
   static none(): LearnedCategories {
     return new LearnedCategories(new Map());
   }
 
   static from(examples: readonly Transaction[]): LearnedCategories {
-    const votes = new Map<string, Map<string, number>>();
-    const refunds = new Set<string>();
+    const byIdentity = new Map<string, Example[]>();
     for (const t of examples) {
       if (t.category?.source !== 'manual') continue;
       if (t.classification === 'internal_transfer' || t.classification === 'ignored') continue;
       const identity = counterpartyIdentity(t);
       if (!identity) continue;
-      const counts = votes.get(identity) ?? new Map<string, number>();
-      counts.set(t.category.categoryId, (counts.get(t.category.categoryId) ?? 0) + 1);
-      votes.set(identity, counts);
-      if (t.isRefund) refunds.add(`${identity}#${t.category.categoryId}`);
+      const list = byIdentity.get(identity) ?? [];
+      list.push({ categoryId: t.category.categoryId, cents: Math.abs(t.amount.cents), refund: t.isRefund });
+      byIdentity.set(identity, list);
     }
-    const learned = new Map<string, LearnedDecision>();
-    for (const [identity, counts] of votes) {
-      const ranked = [...counts].sort((a, b) => b[1] - a[1]);
-      const [first, second] = ranked;
-      if (first && (!second || first[1] > second[1])) {
-        learned.set(identity, { categoryId: first[0], refund: refunds.has(`${identity}#${first[0]}`) });
-      }
-    }
-    return new LearnedCategories(learned);
+    return new LearnedCategories(byIdentity);
   }
 
   decisionFor(t: Transaction): LearnedDecision | undefined {
     const identity = counterpartyIdentity(t);
-    return identity ? this.byIdentity.get(identity) : undefined;
+    const examples = identity ? this.byIdentity.get(identity) : undefined;
+    if (!examples?.length) return undefined;
+    const cents = Math.abs(t.amount.cents);
+    const distance = (e: Example) => Math.abs(e.cents - cents) / Math.max(e.cents, cents, 1);
+    const near = examples.filter((e) => distance(e) <= SAME_AMOUNT_TOLERANCE);
+    if (near.length) {
+      const closest = Math.min(...near.map(distance));
+      const winner = majority(near.filter((e) => distance(e) === closest));
+      if (winner) return winner;
+    }
+    return majority(examples);
   }
 
   categoryFor(t: Transaction): string | undefined {
     return this.decisionFor(t)?.categoryId;
   }
+}
+
+/** Categoria com mais exemplos (estritamente); empate → nenhuma. */
+function majority(examples: readonly Example[]): LearnedDecision | undefined {
+  const counts = new Map<string, number>();
+  for (const e of examples) counts.set(e.categoryId, (counts.get(e.categoryId) ?? 0) + 1);
+  const [first, second] = [...counts].sort((a, b) => b[1] - a[1]);
+  if (!first || (second && second[1] === first[1])) return undefined;
+  return { categoryId: first[0], refund: examples.some((e) => e.categoryId === first[0] && e.refund) };
 }
