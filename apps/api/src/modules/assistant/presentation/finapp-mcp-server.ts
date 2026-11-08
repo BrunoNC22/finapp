@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { AssistantData, Json } from '../application/assistant-data.js';
+import { monthlyAnalysisPack } from '../application/monthly-analysis.js';
 
 const MONTH = z
   .string()
@@ -27,6 +28,20 @@ const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: t
 /** Servidor MCP do finapp: ferramentas de leitura que chamam a porta AssistantData (sem acesso ao banco). */
 export function createFinappMcpServer(data: AssistantData): McpServer {
   const server = new McpServer({ name: 'finapp', version: '1.0.0' }, { instructions: INSTRUCTIONS });
+
+  server.registerTool(
+    'analise_mensal',
+    {
+      title: 'Pacote da análise mensal',
+      description:
+        'Tudo o que a análise do mês precisa numa chamada: resumo do mês e do anterior, gastos por grupo e categoria, ' +
+        'os gastos do mês (até 100), compromissos futuros, recorrências, renda por cenário (12 meses), metas com ' +
+        'viabilidade e oportunidades de renda abertas. Sem mês: o último mês fechado.',
+      inputSchema: { mes: MONTH.optional().describe('Mês analisado (AAAA-MM). Sem informar: o último mês fechado.') },
+      annotations: readOnly,
+    },
+    async ({ mes }) => result(await monthlyAnalysisPack(data, mes)),
+  );
 
   server.registerTool(
     'resumo_do_mes',

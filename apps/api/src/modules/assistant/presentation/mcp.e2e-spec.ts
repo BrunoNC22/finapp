@@ -125,7 +125,7 @@ describe('MCP over HTTP (demo ledger, real MongoDB)', () => {
     expect(init.statusCode).toBe(200);
     expect(init.json().result.serverInfo.name).toBe('finapp');
     const list = await rpc('tools/list', {});
-    expect(list.json().result.tools).toHaveLength(9);
+    expect(list.json().result.tools).toHaveLength(10);
   });
 
   it('answers with the real data, in reais, without documents', async () => {
@@ -149,6 +149,10 @@ describe('MCP over HTTP (demo ledger, real MongoDB)', () => {
     for (const name of ['gastos_por_categoria', 'compromissos_futuros', 'recorrencias', 'oportunidades'])
       await tool(name);
     expect((await tool('perfil_profissional')).perfil).toBeNull();
+
+    const pack = await tool('analise_mensal', { mes: '2026-10' });
+    expect(pack).toMatchObject({ mes: '2026-10', mes_anterior: '2026-09', resumo: { mes: '2026-10' } });
+    expect(pack.gastos_do_mes.transacoes.length).toBeGreaterThan(0);
   });
 
   it('GET and DELETE are not part of a stateless server', async () => {

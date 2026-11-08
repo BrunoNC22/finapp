@@ -51,6 +51,15 @@ unset TOKEN
 Depois, no Claude Code: "o que mais pesou nos meus gastos nos últimos 3 meses?". Outros comandos:
 `node dist/cli.js mcp-tokens` (lista e último uso) e `node dist/cli.js mcp-revoke` (revoga todos).
 
+A ferramenta `analise_mensal` junta numa chamada tudo o que uma análise do mês precisa (o mês e o anterior,
+categorias, gastos, compromissos, recorrências, renda por cenário, metas e oportunidades). O mesmo pacote sai sem MCP,
+direto no servidor:
+
+```sh
+docker compose exec -T api node dist/cli.js analise-mensal          # último mês fechado
+docker compose exec -T api node dist/cli.js analise-mensal 2026-10  # um mês específico
+```
+
 ## Depois de reiniciar a máquina
 
 ```sh

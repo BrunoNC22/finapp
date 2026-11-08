@@ -1,44 +1,8 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { describe, expect, it } from 'vitest';
-import { AssistantData, type Json, type TransactionQuery } from '../application/assistant-data.js';
+import { FakeAssistantData } from '../../../../test/doubles/fake-assistant-data.js';
 import { createFinappMcpServer, MAX_TRANSACTIONS } from './finapp-mcp-server.js';
-
-/** Dublê (stub + spy) da porta: registra as chamadas e devolve um eco. */
-class FakeAssistantData extends AssistantData {
-  readonly calls: unknown[][] = [];
-  private record(name: string, ...args: unknown[]): Json {
-    this.calls.push([name, ...args]);
-    return { ferramenta: name, args };
-  }
-  async monthSummary(month?: string) {
-    return this.record('monthSummary', month);
-  }
-  async spendingByCategory(month: string | undefined, level: 'grupo' | 'categoria') {
-    return this.record('spendingByCategory', month, level);
-  }
-  async transactions(query: TransactionQuery) {
-    return this.record('transactions', query);
-  }
-  async commitments() {
-    return this.record('commitments');
-  }
-  async recurring() {
-    return this.record('recurring');
-  }
-  async income(months: number) {
-    return this.record('income', months);
-  }
-  async goals(deadline?: string) {
-    return this.record('goals', deadline);
-  }
-  async profile() {
-    return this.record('profile');
-  }
-  async opportunities(onlyOpen: boolean) {
-    return this.record('opportunities', onlyOpen);
-  }
-}
 
 async function connected() {
   const data = new FakeAssistantData();
@@ -56,6 +20,7 @@ describe('finapp MCP server', () => {
     const { client } = await connected();
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([
+      'analise_mensal',
       'compromissos_futuros',
       'gastos_por_categoria',
       'listar_transacoes',
@@ -75,7 +40,7 @@ describe('finapp MCP server', () => {
 
   it('calls the port with the validated arguments and defaults', async () => {
     const { client, data } = await connected();
-    expect(text(await client.callTool({ name: 'resumo_do_mes', arguments: { mes: '2026-10' } }))).toEqual({
+    expect(text(await client.callTool({ name: 'resumo_do_mes', arguments: { mes: '2026-10' } }))).toMatchObject({
       ferramenta: 'monthSummary',
       args: ['2026-10'],
     });
@@ -99,5 +64,12 @@ describe('finapp MCP server', () => {
     expect(tooMany.isError).toBe(true);
     expect(badMonth.isError).toBe(true);
     expect(data.calls).toEqual([]);
+  });
+
+  it('builds the monthly analysis pack in one call (closed month by default)', async () => {
+    const { client } = await connected();
+    const pack = text(await client.callTool({ name: 'analise_mensal', arguments: {} }));
+    expect(pack.mes).toBe('2026-10');
+    expect(pack.mes_anterior).toBe('2026-09');
   });
 });
