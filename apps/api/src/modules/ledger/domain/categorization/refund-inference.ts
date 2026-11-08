@@ -2,6 +2,13 @@ import type { Transaction } from '../transaction.js';
 import { REFUND_CATEGORY_FOR } from './default-taxonomy.js';
 import { counterpartyKey } from './learned-categories.js';
 
+/**
+ * Entre pessoas (e no genérico "outros"), dinheiro que volta é ambíguo: empréstimo pago, conta dividida,
+ * ajuda da família. O app não adivinha; uma correção manual ensina (LearnedCategories).
+ */
+const isAmbiguous = (categoryId: string) =>
+  ['pessoas', 'outros'].some((group) => categoryId === group || categoryId.startsWith(`${group}.`));
+
 /** Pagamentos mínimos para um recebimento daquela contraparte ser lido como devolução. */
 const MIN_PAYMENTS = 3;
 
@@ -13,7 +20,7 @@ interface PaymentStats {
 
 /**
  * Dinheiro que VOLTA de quem o usuário costuma pagar é devolução (ex.: corrida paga antes e cancelada),
- * não renda. Exige histórico de pagamentos (≥ 3, a maioria numa categoria) e que o valor devolvido não
+ * não renda. Só para gastos específicos (não entre pessoas). Exige histórico de pagamentos (≥ 3, a maioria numa categoria) e que o valor devolvido não
  * passe do maior pagamento feito: um cliente que o usuário pagou uma vez continua sendo renda.
  */
 export class RefundInference {
@@ -41,7 +48,7 @@ export class RefundInference {
     const stats = key ? this.payments.get(key) : undefined;
     if (!stats || stats.count < MIN_PAYMENTS || inflow.amount.cents > stats.largestCents) return undefined;
     const [main] = [...stats.byCategory].sort((a, b) => b[1] - a[1]);
-    if (!main || main[1] * 2 <= stats.count) return undefined;
+    if (!main || main[1] * 2 <= stats.count || isAmbiguous(main[0])) return undefined;
     return REFUND_CATEGORY_FOR[main[0]] ?? main[0];
   }
 }

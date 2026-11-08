@@ -251,6 +251,18 @@ describe('Categorizer', () => {
       expect(fewPayments.classification).toBe('income');
     });
 
+    it('money from a person the user also pays stays income (loan, split bill, family): too ambiguous to guess', () => {
+      const toFriend = [-5000, -3000, -4000].map((cents) =>
+        aTransaction().withAmount(cents).withPaymentMethod('pix').withCounterparty('Fulano').build(),
+      );
+      for (const t of toFriend) t.categorize('pessoas.pix', 'manual');
+      const fromFriend = back(3000, 'Fulano');
+
+      new Categorizer(providerMap).categorize([...toFriend, fromFriend], []);
+
+      expect(fromFriend.classification).toBe('income');
+    });
+
     it('stops being a refund when the evidence goes away (automatic decisions are recomputed)', () => {
       const rides = [ride(-1500), ride(-2300), ride(-1800)];
       const refund = back(1500);
