@@ -6,12 +6,11 @@ import { foldText } from './categorization-rule.js';
 const GENERIC_DESCRIPTION: ReadonlySet<PaymentMethod> = new Set(['pix', 'ted_doc', 'boleto']);
 
 /**
- * Quem está do outro lado, no mesmo sentido (gasto ou entrada):
+ * Quem está do outro lado, nos dois sentidos:
  * documento completo (CPF pela base de 9 dígitos) > nome da contraparte > estabelecimento (cartão).
  * Só existe em memória: nunca é persistida nem exposta.
  */
-export function counterpartyIdentity(t: Transaction): string | undefined {
-  if (t.direction === 'none') return undefined;
+export function counterpartyKey(t: Transaction): string | undefined {
   const document = t.counterparty?.document;
   const name = t.counterparty?.name?.trim();
   let who: string | undefined;
@@ -23,7 +22,20 @@ export function counterpartyIdentity(t: Transaction): string | undefined {
     const merchant = withoutGatewayPrefix(normalizeMerchant(t.description));
     who = merchant ? `m:${merchant}` : undefined;
   }
-  return who ? `${t.direction}|${who}` : undefined;
+  return who;
+}
+
+/** A contraparte no MESMO sentido (gasto ou entrada): o que se aprende de um não vale para o outro. */
+export function counterpartyIdentity(t: Transaction): string | undefined {
+  if (t.direction === 'none') return undefined;
+  const key = counterpartyKey(t);
+  return key ? `${t.direction}|${key}` : undefined;
+}
+
+export interface LearnedDecision {
+  readonly categoryId: string;
+  /** Entrada que o usuário tratou como devolução (gasto negativo), não como renda. */
+  readonly refund: boolean;
 }
 
 /**
@@ -31,7 +43,7 @@ export function counterpartyIdentity(t: Transaction): string | undefined {
  * vale para as outras da mesma contraparte, em todos os meses. Vence a maioria; empate não ensina nada.
  */
 export class LearnedCategories {
-  private constructor(private readonly byIdentity: ReadonlyMap<string, string>) {}
+  private constructor(private readonly byIdentity: ReadonlyMap<string, LearnedDecision>) {}
 
   static none(): LearnedCategories {
     return new LearnedCategories(new Map());
@@ -39,6 +51,7 @@ export class LearnedCategories {
 
   static from(examples: readonly Transaction[]): LearnedCategories {
     const votes = new Map<string, Map<string, number>>();
+    const refunds = new Set<string>();
     for (const t of examples) {
       if (t.category?.source !== 'manual') continue;
       if (t.classification === 'internal_transfer' || t.classification === 'ignored') continue;
@@ -47,18 +60,25 @@ export class LearnedCategories {
       const counts = votes.get(identity) ?? new Map<string, number>();
       counts.set(t.category.categoryId, (counts.get(t.category.categoryId) ?? 0) + 1);
       votes.set(identity, counts);
+      if (t.isRefund) refunds.add(`${identity}#${t.category.categoryId}`);
     }
-    const learned = new Map<string, string>();
+    const learned = new Map<string, LearnedDecision>();
     for (const [identity, counts] of votes) {
       const ranked = [...counts].sort((a, b) => b[1] - a[1]);
       const [first, second] = ranked;
-      if (first && (!second || first[1] > second[1])) learned.set(identity, first[0]);
+      if (first && (!second || first[1] > second[1])) {
+        learned.set(identity, { categoryId: first[0], refund: refunds.has(`${identity}#${first[0]}`) });
+      }
     }
     return new LearnedCategories(learned);
   }
 
-  categoryFor(t: Transaction): string | undefined {
+  decisionFor(t: Transaction): LearnedDecision | undefined {
     const identity = counterpartyIdentity(t);
     return identity ? this.byIdentity.get(identity) : undefined;
+  }
+
+  categoryFor(t: Transaction): string | undefined {
+    return this.decisionFor(t)?.categoryId;
   }
 }

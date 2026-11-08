@@ -191,4 +191,26 @@ describe('Transaction', () => {
       expect(() => aTransaction().withDescription('  ').build()).toThrow(InvalidTransactionError);
     });
   });
+
+  it('a refund is money coming back: it reduces spending instead of counting as income', () => {
+    const refund = aTransaction().withAmount(1890).withPaymentMethod('pix').build();
+    expect(refund.classification).toBe('income');
+
+    expect(refund.markAsRefund()).toBe(true);
+    expect(refund.classification).toBe('expense');
+    expect(refund.isRefund).toBe(true);
+
+    refund.resetAutomaticClassification();
+    expect(refund.classification).toBe('income');
+  });
+
+  it('only automatic inflows can be marked as refunds', () => {
+    const outflow = aTransaction().withAmount(-1890).withPaymentMethod('pix').build();
+    expect(outflow.markAsRefund()).toBe(false);
+    const decided = aTransaction().withAmount(1890).withPaymentMethod('pix').build();
+    decided.classifyManually('income');
+    expect(decided.markAsRefund()).toBe(false);
+    decided.resetAutomaticClassification();
+    expect(decided.classification).toBe('income');
+  });
 });

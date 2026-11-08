@@ -149,7 +149,15 @@ describe('Categorizer', () => {
       ],
       [rule({ categoryId: 'transporte.app', descriptionContains: 'corridas' })],
     );
-    expect(report).toEqual({ learned: 0, provider: 1, rule: 1, paymentMethod: 0, uncategorized: 1, skipped: 0 });
+    expect(report).toEqual({
+      learned: 0,
+      refund: 0,
+      provider: 1,
+      rule: 1,
+      paymentMethod: 0,
+      uncategorized: 1,
+      skipped: 0,
+    });
   });
 
   it('a category learned from the user corrections beats rules and the provider, but not a manual choice', () => {
@@ -175,5 +183,97 @@ describe('Categorizer', () => {
     expect(other.category).toEqual({ categoryId: 'transporte.app', source: 'learned' });
     expect(manual.category).toEqual({ categoryId: 'lazer.outros', source: 'manual' });
     expect(report.learned).toBe(1);
+  });
+
+  describe('refunds', () => {
+    const ride = (cents: number) =>
+      aTransaction()
+        .withAmount(cents)
+        .withPaymentMethod('pix')
+        .withDescription('Corridas')
+        .withCounterparty('Empresa X')
+        .build();
+    const back = (cents: number, name = 'Empresa X') =>
+      aTransaction()
+        .withAmount(cents)
+        .withPaymentMethod('pix')
+        .withDescription('Pix recebido')
+        .withCounterparty(name)
+        .build();
+    const rideRule = rule({ categoryId: 'transporte.app', descriptionContains: 'corrida' });
+
+    it('money back from whom the user keeps paying is a refund of that spending, not income', () => {
+      const rides = [ride(-1500), ride(-2300), ride(-1800)];
+      const refund = back(2300);
+
+      const report = new Categorizer(providerMap).categorize([refund, ...rides], [rideRule]);
+
+      expect(refund.category).toEqual({ categoryId: 'transporte.app-devolucao', source: 'rule' });
+      expect(refund.classification).toBe('expense');
+      expect(report.refund).toBe(1);
+    });
+
+    it('a refund of other spending goes back to the same category', () => {
+      const orders = [-3000, -4500, -2800].map((cents) =>
+        aTransaction()
+          .withAmount(cents)
+          .withPaymentMethod('pix')
+          .withCounterparty('Loja Y')
+          .withProviderCategory('prov-groceries')
+          .build(),
+      );
+      const refund = back(2800, 'Loja Y');
+
+      new Categorizer(providerMap).categorize([...orders, refund], []);
+
+      expect(refund.category?.categoryId).toBe('alimentacao.mercado');
+      expect(refund.isRefund).toBe(true);
+    });
+
+    it('is not a refund with too little history or when more comes back than was ever paid', () => {
+      const tooBig = back(9000);
+      const fewPayments = back(1000, 'Empresa Z');
+      const payments = [
+        ride(-1500),
+        ride(-2300),
+        ride(-1800),
+        aTransaction()
+          .withAmount(-1000)
+          .withPaymentMethod('pix')
+          .withDescription('Corridas')
+          .withCounterparty('Empresa Z')
+          .build(),
+      ];
+
+      new Categorizer(providerMap).categorize([tooBig, fewPayments, ...payments], [rideRule]);
+
+      expect(tooBig.classification).toBe('income');
+      expect(fewPayments.classification).toBe('income');
+    });
+
+    it('stops being a refund when the evidence goes away (automatic decisions are recomputed)', () => {
+      const rides = [ride(-1500), ride(-2300), ride(-1800)];
+      const refund = back(1500);
+      const categorizer = new Categorizer(providerMap);
+      categorizer.categorize([refund, ...rides], [rideRule]);
+      expect(refund.isRefund).toBe(true);
+
+      categorizer.categorize([refund], [rideRule]);
+
+      expect(refund.classification).toBe('income');
+      expect(refund.category?.categoryId).not.toBe('transporte.app-devolucao');
+    });
+
+    it('learns refunds from a manual correction of an incoming amount', () => {
+      const example = back(1200);
+      example.categorize('transporte.app-devolucao', 'manual');
+      example.classifyManually('expense');
+      const another = back(800);
+
+      new Categorizer(providerMap).categorize([another], [], LearnedCategories.from([example]));
+
+      expect(another.category).toEqual({ categoryId: 'transporte.app-devolucao', source: 'learned' });
+      expect(another.isRefund).toBe(true);
+    });
   });
 });

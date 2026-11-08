@@ -5,7 +5,7 @@ import { CategorizationRule, type CategorizationRuleProps } from '../../domain/c
 import type { Categorizer } from '../../domain/categorization/categorizer.js';
 import { Category } from '../../domain/categorization/category.js';
 import { DEFAULT_CATEGORIES, DEFAULT_RULES } from '../../domain/categorization/default-taxonomy.js';
-import { counterpartyIdentity, LearnedCategories } from '../../domain/categorization/learned-categories.js';
+import { counterpartyKey, LearnedCategories } from '../../domain/categorization/learned-categories.js';
 import type { CategorizationRuleRepository } from '../ports/categorization-rule-repository.js';
 import type { CategoryRepository } from '../ports/category-repository.js';
 import type { TransactionRepository } from '../ports/transaction-repository.js';
@@ -104,25 +104,33 @@ export class CategorizeTransactionManually {
   ) {}
 
   async execute(input: { transactionId: string; categoryId: string }): Promise<{ alsoApplied: number }> {
-    await requireActiveCategory(this.categories, input.categoryId);
+    const category = await requireActiveCategory(this.categories, input.categoryId);
     const transaction = await this.transactions.findById(input.transactionId);
     if (!transaction) throw new UnknownTransactionError(input.transactionId);
     transaction.categorize(input.categoryId, 'manual');
+    // Entrada numa categoria de gasto é devolução: reduz o gasto e não conta como renda.
+    if (transaction.direction === 'inflow' && category.kind === 'expense' && transaction.classification === 'income') {
+      transaction.classifyManually('expense');
+    }
     await this.transactions.save(transaction);
 
-    const identity = counterpartyIdentity(transaction);
-    if (!identity) return { alsoApplied: 0 };
+    // Mesma contraparte nos dois sentidos: corrigir as corridas também reavalia as devoluções delas.
+    const key = counterpartyKey(transaction);
+    if (!key) return { alsoApplied: 0 };
     const reach = CategorizeTransactionManually.REACH_MONTHS;
     const sameCounterparty = (
       await this.transactions.findInPeriod({
         from: transaction.occurredOn.addMonths(-reach),
         to: transaction.occurredOn.addMonths(reach),
       })
-    ).filter((t) => t.id !== transaction.id && counterpartyIdentity(t) === identity);
-    const before = new Map(sameCounterparty.map((t) => [t.id, t.category?.categoryId]));
+    ).filter((t) => t.id !== transaction.id && counterpartyKey(t) === key);
+    const before = new Map(sameCounterparty.map((t) => [t.id, `${t.category?.categoryId}|${t.classification}`]));
     const learned = LearnedCategories.from(await this.transactions.findManuallyCategorized());
-    this.categorizer.categorize(sameCounterparty, await this.rules.findAll(), learned);
-    const changed = sameCounterparty.filter((t) => t.category?.categoryId !== before.get(t.id));
+    // A propria transação entra como evidência (ex.: mais um pagamento) mas não é alterada (é manual).
+    this.categorizer.categorize([transaction, ...sameCounterparty], await this.rules.findAll(), learned);
+    const changed = sameCounterparty.filter(
+      (t) => `${t.category?.categoryId}|${t.classification}` !== before.get(t.id),
+    );
     await this.transactions.saveMany(changed);
     return { alsoApplied: changed.length };
   }

@@ -21,10 +21,14 @@ const BY_METHOD: Record<TransactionDto['paymentMethod'], Badge> = {
   other: { label: 'Outro', tone: 'neutral' },
 };
 
+/** Dinheiro que voltou de um gasto: classificado como gasto, mas com valor positivo. */
+export const isRefund = (t: TransactionDto): boolean => t.classification === 'expense' && t.amount.cents > 0;
+
 /** Selo da forma de pagamento: Pix, à vista, parcela k/n, transferência interna, fatura… (nada para "outro"). */
 export function paymentBadge(t: TransactionDto): Badge | undefined {
   if (t.paymentMethod === 'bill_payment') return BY_METHOD.bill_payment;
   if (t.classification === 'internal_transfer') return { label: 'Entre contas', tone: 'transfer' };
+  if (isRefund(t)) return { label: 'Devolução', tone: 'income' };
   if (t.installment) return { label: `Parcela ${t.installment.number}/${t.installment.total}`, tone: 'installment' };
   return t.paymentMethod === 'other' ? undefined : BY_METHOD[t.paymentMethod];
 }
@@ -71,7 +75,11 @@ export function explain(t: TransactionDto): string[] {
   }
   switch (t.classificationSource) {
     case 'manual':
-      reasons.push(`Classificada por você como "${CLASSIFICATION_LABEL[t.classification].toLowerCase()}".`);
+      reasons.push(
+        isRefund(t)
+          ? 'Você marcou como devolução: reduz o gasto da categoria e não conta como renda.'
+          : `Classificada por você como "${CLASSIFICATION_LABEL[t.classification].toLowerCase()}".`,
+      );
       break;
     case 'matcher':
       reasons.push(
@@ -82,7 +90,11 @@ export function explain(t: TransactionDto): string[] {
       break;
     default:
       reasons.push(
-        t.classification === 'income' ? 'Entrada (valor positivo).' : 'Gasto (valor negativo, saiu da conta).',
+        isRefund(t)
+          ? 'Devolução: o dinheiro voltou de quem você costuma pagar (ex.: corrida cancelada). Reduz o gasto da categoria e não conta como renda.'
+          : t.classification === 'income'
+            ? 'Entrada (valor positivo).'
+            : 'Gasto (valor negativo, saiu da conta).',
       );
   }
   if (t.installment?.totalAmountIsEstimated) {

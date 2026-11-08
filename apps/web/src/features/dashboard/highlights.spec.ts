@@ -52,6 +52,19 @@ describe('spendingByGroup', () => {
     ]);
   });
 
+  it('nets refunds into their group (rides minus cancelled rides)', () => {
+    const report = aReport();
+    report.categories.push({
+      categoryId: 'alimentacao.delivery-devolucao',
+      groupId: 'alimentacao',
+      spent: brl(-20000),
+      count: 2,
+      previousAverage: brl(0),
+      changePercent: null,
+    });
+    expect(spendingByGroup(report, directory).find((s) => s.groupId === 'alimentacao')?.cents).toBe(60000);
+  });
+
   it('folds the tail into "Outros"', () => {
     const slices = spendingByGroup(aReport(), directory, 2);
     expect(slices.map((s) => s.label)).toEqual(['Moradia', 'Outros']);

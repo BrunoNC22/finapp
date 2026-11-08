@@ -199,6 +199,26 @@ export class Transaction {
     return true;
   }
 
+  /**
+   * Devolução: dinheiro que VOLTA de um gasto (corrida cancelada, compra estornada). Conta como gasto
+   * negativo (reduz o gasto da categoria) e não como renda. Só para entradas sem decisão do usuário.
+   */
+  markAsRefund(): boolean {
+    if (this.state.classificationSource !== 'default' || this.direction !== 'inflow') return false;
+    this.state = { ...this.state, classification: 'expense' };
+    return true;
+  }
+
+  get isRefund(): boolean {
+    return this.direction === 'inflow' && this.state.classification === 'expense';
+  }
+
+  /** Desfaz o que a automação decidiu sobre a classificação: volta ao padrão (forma de pagamento e sinal). */
+  resetAutomaticClassification(): void {
+    if (this.state.classificationSource !== 'default') return;
+    this.state = { ...this.state, classification: Transaction.defaultClassification(this.props) };
+  }
+
   /** Decisão do usuário: prevalece sobre qualquer classificação automática. */
   classifyManually(classification: Classification, counterpartId?: string): void {
     if (counterpartId === this.id) throw new InvalidTransactionError('uma transação não pode ser par de si mesma');

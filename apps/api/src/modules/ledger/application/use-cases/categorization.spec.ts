@@ -124,7 +124,7 @@ describe('categorization use cases', () => {
       expect(tx?.category).toEqual({ categoryId: 'transporte.app', source: 'manual' });
     });
 
-    it('applies the correction to the same counterparty in every month, in the same direction only', async () => {
+    it('applies the correction to the same counterparty in every month; money back from it becomes a refund', async () => {
       const pixTo = (id: string, day: string, cents: number, name: string) =>
         aTransaction().withId(id).on(day).withAmount(cents).withPaymentMethod('pix').withCounterparty(name).build();
       await transactions.saveMany([
@@ -140,14 +140,48 @@ describe('categorization use cases', () => {
         categoryId: 'transporte.app',
       });
 
-      expect(result.alsoApplied).toBe(2);
+      expect(result.alsoApplied).toBe(3);
       expect((await transactions.findById('jun'))?.category).toEqual({
         categoryId: 'transporte.app',
         source: 'learned',
       });
       expect((await transactions.findById('jan'))?.category?.categoryId).toBe('transporte.app');
-      expect((await transactions.findById('refund'))?.category?.categoryId).not.toBe('transporte.app');
+      expect((await transactions.findById('refund'))?.category?.categoryId).toBe('transporte.app-devolucao');
+      expect((await transactions.findById('refund'))?.classification).toBe('expense');
       expect((await transactions.findById('friend'))?.category?.categoryId).not.toBe('transporte.app');
+    });
+
+    it('an incoming amount put into an expense category is a refund (reduces spending, not income)', async () => {
+      await transactions.save(aTransaction().withId('back').withAmount(1500).withPaymentMethod('pix').build());
+
+      await new CategorizeTransactionManually(transactions, categories, rules, categorizer).execute({
+        transactionId: 'back',
+        categoryId: 'transporte.app-devolucao',
+      });
+
+      const back = await transactions.findById('back');
+      expect(back?.classification).toBe('expense');
+      expect(back?.classificationSource).toBe('manual');
+    });
+
+    it('correcting the rides of a counterparty also turns its money back into refunds', async () => {
+      const pixWith = (id: string, cents: number) =>
+        aTransaction().withId(id).withAmount(cents).withPaymentMethod('pix').withCounterparty('Empresa X').build();
+      await transactions.saveMany([
+        pixWith('r1', -1500),
+        pixWith('r2', -2300),
+        pixWith('r3', -1800),
+        pixWith('back', 1800),
+      ]);
+
+      await new CategorizeTransactionManually(transactions, categories, rules, categorizer).execute({
+        transactionId: 'r1',
+        categoryId: 'transporte.app',
+      });
+
+      const back = await transactions.findById('back');
+      expect(back?.category?.categoryId).toBe('transporte.app-devolucao');
+      expect(back?.classification).toBe('expense');
     });
 
     it('rejects unknown categories', async () => {

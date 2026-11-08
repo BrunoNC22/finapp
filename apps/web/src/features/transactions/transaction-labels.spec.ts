@@ -36,6 +36,14 @@ describe('paymentBadge', () => {
   });
 });
 
+describe('refunds', () => {
+  it('money back from a spending gets its own badge and explanation', () => {
+    const refund = t({ amount: { cents: 1800, currency: 'BRL' }, classification: 'expense', paymentMethod: 'pix' });
+    expect(paymentBadge(refund)).toEqual({ label: 'Devolução', tone: 'income' });
+    expect(explain(refund)[1]).toMatch(/^Devolução: o dinheiro voltou/);
+  });
+});
+
 describe('explain', () => {
   it('says where the category and the classification came from', () => {
     expect(explain(t({ category: { id: 'x', source: 'rule' } }))).toContain('Categoria definida por uma regra sua.');

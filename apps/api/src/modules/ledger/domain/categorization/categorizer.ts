@@ -1,6 +1,7 @@
 import type { PaymentMethod, Transaction } from '../transaction.js';
 import type { CategorizationRule } from './categorization-rule.js';
 import { LearnedCategories } from './learned-categories.js';
+import { RefundInference } from './refund-inference.js';
 
 /**
  * Porta: traduz a categoria sugerida pelo provedor de Open Finance para a taxonomia do app.
@@ -13,6 +14,8 @@ export interface ProviderCategoryMap {
 export interface CategorizationReport {
   /** Aprendidas com correções manuais para a mesma contraparte. */
   readonly learned: number;
+  /** Entradas reconhecidas como devolução de um gasto (não contam como renda). */
+  readonly refund: number;
   readonly rule: number;
   readonly paymentMethod: number;
   readonly provider: number;
@@ -39,9 +42,12 @@ const FALLBACK_BY_PAYMENT_METHOD: Partial<Record<PaymentMethod, string>> = {
 
 /**
  * Atribui categorias com a precedência:
- * manual > aprendida das correções manuais > regra > forma de pagamento (forte) > provedor > forma (fallback).
- * A aprendida vem antes das regras: é a decisão do próprio usuário sobre AQUELA contraparte.
+ * manual > aprendida das correções manuais > devolução > regra > forma de pagamento (forte) > provedor >
+ * forma (fallback). A aprendida vem antes das regras: é a decisão do próprio usuário sobre AQUELA contraparte.
  * Recalcula do zero o que não é manual: mudar ou apagar uma regra reflete na próxima execução.
+ *
+ * Em duas fases: primeiro saídas (e o resto), depois entradas, que podem ser devoluções de quem o usuário
+ * paga (a evidência vem das saídas já categorizadas nesta execução).
  */
 export class Categorizer {
   constructor(private readonly providerMap: ProviderCategoryMap) {}
@@ -52,52 +58,73 @@ export class Categorizer {
     learned: LearnedCategories = LearnedCategories.none(),
   ): CategorizationReport {
     const ordered = [...rules].filter((r) => r.enabled).sort((a, b) => a.priority - b.priority);
-    const report = { learned: 0, rule: 0, paymentMethod: 0, provider: 0, uncategorized: 0, skipped: 0 };
+    const report = { learned: 0, refund: 0, rule: 0, paymentMethod: 0, provider: 0, uncategorized: 0, skipped: 0 };
+    for (const t of transactions) t.resetAutomaticClassification();
 
-    for (const transaction of transactions) {
-      if (transaction.classification === 'internal_transfer' || transaction.classification === 'ignored') {
-        transaction.clearAutomaticCategory();
-        report.skipped++;
-        continue;
-      }
-      if (transaction.category?.source === 'manual') {
-        report.skipped++;
-        continue;
-      }
-      transaction.clearAutomaticCategory();
-
-      const fromCorrections = learned.categoryFor(transaction);
-      if (fromCorrections) {
-        transaction.categorize(fromCorrections, 'learned');
-        report.learned++;
-        continue;
-      }
-      const rule = ordered.find((r) => r.matches(transaction));
-      if (rule) {
-        transaction.categorize(rule.categoryId, 'rule');
-        report.rule++;
-        continue;
-      }
-      const strong = STRONG_BY_PAYMENT_METHOD[transaction.paymentMethod];
-      if (strong) {
-        transaction.categorize(strong, 'rule');
-        report.paymentMethod++;
-        continue;
-      }
-      const fromProvider = transaction.providerCategoryId && this.providerMap.resolve(transaction.providerCategoryId);
-      if (fromProvider) {
-        transaction.categorize(fromProvider, 'provider');
-        report.provider++;
-        continue;
-      }
-      const fallback = FALLBACK_BY_PAYMENT_METHOD[transaction.paymentMethod];
-      if (fallback) {
-        transaction.categorize(fallback, 'rule');
-        report.paymentMethod++;
-        continue;
-      }
-      report.uncategorized++;
-    }
+    for (const t of transactions.filter((x) => x.direction !== 'inflow'))
+      this.one(t, ordered, learned, undefined, report);
+    const refunds = RefundInference.from(transactions);
+    for (const t of transactions.filter((x) => x.direction === 'inflow'))
+      this.one(t, ordered, learned, refunds, report);
     return report;
+  }
+
+  private one(
+    transaction: Transaction,
+    rules: readonly CategorizationRule[],
+    learned: LearnedCategories,
+    refunds: RefundInference | undefined,
+    report: { -readonly [K in keyof CategorizationReport]: number },
+  ): void {
+    if (transaction.classification === 'internal_transfer' || transaction.classification === 'ignored') {
+      transaction.clearAutomaticCategory();
+      report.skipped++;
+      return;
+    }
+    if (transaction.category?.source === 'manual') {
+      report.skipped++;
+      return;
+    }
+    transaction.clearAutomaticCategory();
+
+    const fromCorrections = learned.decisionFor(transaction);
+    if (fromCorrections) {
+      transaction.categorize(fromCorrections.categoryId, 'learned');
+      if (fromCorrections.refund) transaction.markAsRefund();
+      report.learned++;
+      return;
+    }
+    const refundOf = refunds?.categoryFor(transaction);
+    if (refundOf && transaction.classification === 'income') {
+      transaction.categorize(refundOf, 'rule');
+      transaction.markAsRefund();
+      report.refund++;
+      return;
+    }
+    const rule = rules.find((r) => r.matches(transaction));
+    if (rule) {
+      transaction.categorize(rule.categoryId, 'rule');
+      report.rule++;
+      return;
+    }
+    const strong = STRONG_BY_PAYMENT_METHOD[transaction.paymentMethod];
+    if (strong) {
+      transaction.categorize(strong, 'rule');
+      report.paymentMethod++;
+      return;
+    }
+    const fromProvider = transaction.providerCategoryId && this.providerMap.resolve(transaction.providerCategoryId);
+    if (fromProvider) {
+      transaction.categorize(fromProvider, 'provider');
+      report.provider++;
+      return;
+    }
+    const fallback = FALLBACK_BY_PAYMENT_METHOD[transaction.paymentMethod];
+    if (fallback) {
+      transaction.categorize(fallback, 'rule');
+      report.paymentMethod++;
+      return;
+    }
+    report.uncategorized++;
   }
 }

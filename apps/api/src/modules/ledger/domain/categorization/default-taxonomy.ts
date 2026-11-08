@@ -40,6 +40,7 @@ const GROUPS: Record<string, Group> = {
     kind: 'expense',
     items: {
       app: 'Táxi e transporte por app',
+      'app-devolucao': 'Devolução de app de transporte',
       publico: 'Transporte público',
       combustivel: 'Combustível',
       'estacionamento-pedagio': 'Estacionamento e pedágio',
@@ -109,6 +110,13 @@ export const DEFAULT_CATEGORIES: readonly CategoryProps[] = Object.entries(GROUP
   { id, name: group.name, kind: group.kind },
   ...Object.entries(group.items).map(([item, name]) => ({ id: `${id}.${item}`, name, kind: group.kind, parentId: id })),
 ]);
+
+/**
+ * Categoria própria para devoluções de certos gastos (ex.: corrida paga antes e cancelada). Fica no
+ * mesmo grupo, então o total do grupo já sai líquido. Sem entrada aqui, a devolução volta para a
+ * própria categoria do gasto.
+ */
+export const REFUND_CATEGORY_FOR: Readonly<Record<string, string>> = { 'transporte.app': 'transporte.app-devolucao' };
 
 /** Regras padrão genéricas (sem dados pessoais), editáveis e desativáveis pelo usuário. */
 export const DEFAULT_RULES: readonly Omit<CategorizationRuleProps, 'id'>[] = [

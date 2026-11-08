@@ -303,7 +303,9 @@ function TransactionRow({
               onChange={(e) => classify.mutate(e.target.value as TransactionDto['classification'])}
               disabled={classify.isPending}
             >
-              <option value="expense">{CLASSIFICATION_LABEL.expense}</option>
+              <option value="expense">
+                {t.amount.cents > 0 ? 'Devolução (reduz o gasto)' : CLASSIFICATION_LABEL.expense}
+              </option>
               <option value="income">{CLASSIFICATION_LABEL.income}</option>
               <option value="ignored">{CLASSIFICATION_LABEL.ignored}</option>
               {t.classification === 'internal_transfer' && (

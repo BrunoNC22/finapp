@@ -24,7 +24,8 @@ export function spendingHighlights(
   const { limit = 3, monthInProgress = false } = options;
   return report.categories
     .flatMap((row) => {
-      if (!row.categoryId || row.changePercent === null) return [];
+      // Linhas de devolução (gasto negativo) não viram destaque.
+      if (!row.categoryId || row.changePercent === null || row.spent.cents <= 0) return [];
       const difference = Math.abs(row.spent.cents) - Math.abs(row.previousAverage.cents);
       if (Math.abs(row.changePercent) < MIN_PERCENT || Math.abs(difference) < MIN_DIFFERENCE_CENTS) return [];
       // Mês em andamento: gastar menos que a média "até agora" não diz nada; gastar mais, sim.
@@ -46,11 +47,15 @@ export interface GroupSlice {
   readonly cents: number;
 }
 
-/** Gasto do mês por grupo de categoria (Alimentação, Moradia…), do maior para o menor; o resto vira "Outros". */
+/**
+ * Gasto LÍQUIDO do mês por grupo (Alimentação, Transporte…): devoluções abatem do próprio grupo.
+ * Do maior para o menor; o resto vira "Outros".
+ */
 export function spendingByGroup(report: MonthlyReportDto, categories: CategoryDirectory, maxSlices = 7): GroupSlice[] {
   const totals = new Map<string | null, number>();
   for (const row of report.categories) {
-    totals.set(row.groupId, (totals.get(row.groupId) ?? 0) + Math.abs(row.spent.cents));
+    // Com sinal: devoluções (gasto negativo) abatem do próprio grupo.
+    totals.set(row.groupId, (totals.get(row.groupId) ?? 0) + row.spent.cents);
   }
   const slices = [...totals.entries()]
     .filter(([, cents]) => cents > 0)
