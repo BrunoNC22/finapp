@@ -60,6 +60,8 @@ export interface PlanResult {
 /** Grupos de categoria tratados como essenciais: não entram como sugestão de corte. */
 const ESSENTIAL_GROUPS = ['moradia', 'saude', 'educacao', 'financeiro', 'renda', 'investimentos'];
 const MAX_CUT_RATIO = 0.3;
+/** Só as maiores alavancas: uma lista longa não ajuda a decidir. */
+const MAX_CUTS = 3;
 const MIN_TEST_MONTHS = 12;
 
 interface Active {
@@ -164,7 +166,7 @@ export function simulatePlan(input: PlanInput): PlanResult {
   return { goals: outcomes, timeline };
 }
 
-/** Renda extra que fecharia a conta, e cortes de até 30% nas maiores categorias não essenciais. */
+/** Renda extra que fecharia a conta, e cortes de até 30% nas 3 maiores categorias não essenciais. */
 function levers(gap: Money, baseline: Baseline, goal: Goal): Lever[] {
   const replaced = new Set(goal.replacedCategories());
   const cuts = [...baseline.byCategory.entries()]
@@ -173,7 +175,7 @@ function levers(gap: Money, baseline: Baseline, goal: Goal): Lever[] {
   const result: Lever[] = [{ kind: 'extra_income', amount: gap }];
   let remaining = gap.cents;
   for (const [categoryId, avg] of cuts) {
-    if (remaining <= 0) break;
+    if (remaining <= 0 || result.length > MAX_CUTS) break;
     const amount = Math.min(remaining, Math.round(avg.cents * MAX_CUT_RATIO));
     result.push({ kind: 'cut', categoryId, amount: Money.fromCents(amount) });
     remaining -= amount;

@@ -154,6 +154,26 @@ describe('simulatePlan: metas em sequência, mês a mês', () => {
     expect(plan.goals.map((g) => g.startMonth?.toString())).toEqual(['2027-03', '2027-06']);
   });
 
+  it('mostra no máximo as 3 maiores alavancas de corte, mesmo quando falta muito', () => {
+    const many = {
+      monthlySpending: r(1500),
+      byCategory: new Map(['a', 'b', 'c', 'd', 'e'].map((id, i) => [`grupo${id}.x`, r(300 - i * 10)])),
+    };
+    const plan = simulatePlan({
+      goals: [goal({ id: 'caro', kind: 'lifestyle', recurringCosts: [{ name: 'x', monthly: r(5000) }] })],
+      baseline: many,
+      months: months(12),
+      income: flat(2000, 12),
+      startingSavings: Money.zero(),
+      minSlackRatio: 0.1,
+    });
+    expect(plan.goals[0]?.levers.filter((l) => l.kind === 'cut').map((l) => l.categoryId)).toEqual([
+      'grupoa.x',
+      'grupob.x',
+      'grupoc.x',
+    ]);
+  });
+
   it('respeita a folga mínima e mostra as alavancas quando a meta não cabe', () => {
     // aluguel de 1.600 substituindo os 350 de casa: gasto 1.500 − 350 + 1.600 = 2.750 > renda 2.000
     const plan = simulatePlan({
