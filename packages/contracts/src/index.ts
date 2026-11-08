@@ -299,3 +299,80 @@ export const SessionSchema = z.object({
   current: z.boolean(),
 });
 export type SessionDto = z.infer<typeof SessionSchema>;
+
+// ------------------------------------------------------------------ planejamento: renda
+const YearMonthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'mês no formato AAAA-MM');
+export const IncomeKindSchema = z.enum(['scholarship', 'freelance', 'employment', 'other']);
+export const IncomeRiskSchema = z.enum(['low', 'medium', 'high']);
+export const IncomeStatusSchema = z.enum(['active', 'pending', 'ended']);
+const IncomeMatcherSchema = z.object({
+  counterpartyContains: z.string().trim().max(80).optional(),
+  descriptionContains: z.string().trim().max(80).optional(),
+  accountId: z.string().min(1).optional(),
+});
+
+export const IncomeSourceSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  kind: IncomeKindSchema,
+  expectedMonthly: MoneySchema,
+  startsOn: YearMonthSchema,
+  endsOn: YearMonthSchema.optional(),
+  risk: IncomeRiskSchema,
+  status: IncomeStatusSchema,
+  matcher: IncomeMatcherSchema.optional(),
+});
+export type IncomeSourceDto = z.infer<typeof IncomeSourceSchema>;
+
+export const CreateIncomeSourceCommandSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+  kind: IncomeKindSchema,
+  expectedMonthlyCents: z.number().int().positive(),
+  startsOn: YearMonthSchema,
+  endsOn: YearMonthSchema.optional(),
+  risk: IncomeRiskSchema,
+  status: IncomeStatusSchema,
+  matcher: IncomeMatcherSchema.optional(),
+});
+export type CreateIncomeSourceCommand = z.infer<typeof CreateIncomeSourceCommandSchema>;
+
+/** Campos ausentes não mudam; `endsOn: null` remove o fim; `matcher: null` para de acompanhar. */
+export const UpdateIncomeSourceCommandSchema = CreateIncomeSourceCommandSchema.partial().extend({
+  endsOn: YearMonthSchema.nullable().optional(),
+  matcher: IncomeMatcherSchema.nullable().optional(),
+});
+export type UpdateIncomeSourceCommand = z.infer<typeof UpdateIncomeSourceCommandSchema>;
+
+export const IncomeOverviewQuerySchema = z.object({
+  month: YearMonthSchema.optional(),
+  months: z.coerce.number().int().min(1).max(60).default(24),
+});
+
+export const IncomeOverviewSchema = z.object({
+  month: YearMonthSchema,
+  projection: z.object({
+    months: z.array(YearMonthSchema),
+    scenarios: z.array(
+      z.object({
+        id: z.enum(['floor', 'likely', 'optimistic']),
+        name: z.string(),
+        description: z.string(),
+        totals: z.array(MoneySchema),
+        bySource: z.array(z.object({ sourceId: z.string(), amounts: z.array(MoneySchema) })),
+      }),
+    ),
+  }),
+  tracking: z.object({
+    sources: z.array(
+      z.object({
+        sourceId: z.string(),
+        expected: MoneySchema,
+        observed: MoneySchema,
+        status: z.enum(['paid', 'partial', 'missing', 'waiting', 'not_expected']),
+      }),
+    ),
+    unrecognized: MoneySchema,
+    suggestions: z.array(z.object({ name: z.string(), months: z.number().int(), averageMonthly: MoneySchema })),
+  }),
+});
+export type IncomeOverviewDto = z.infer<typeof IncomeOverviewSchema>;

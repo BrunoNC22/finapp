@@ -24,6 +24,7 @@ import {
   GetInstallmentPurchases,
   UpdateCategory,
 } from './application/use-cases/ledger-commands.js';
+import { ListIncomeEntries } from './application/use-cases/list-income-entries.js';
 import { GetMonthlyReport } from './application/use-cases/monthly-report.js';
 import { SyncAccounts } from './application/use-cases/sync-accounts.js';
 import { Categorizer } from './domain/categorization/categorizer.js';
@@ -110,6 +111,11 @@ function openFinanceProvider(config: AppConfig, clock: Clock): OpenFinanceProvid
       inject: [TransactionRepository, CategoryRepository, CategorizationRuleRepository, OpenFinanceProvider],
     },
     {
+      provide: ListIncomeEntries,
+      useFactory: (t: TransactionRepository) => new ListIncomeEntries(t),
+      inject: [TransactionRepository],
+    },
+    {
       provide: ClassifyTransactionManually,
       useFactory: (t: TransactionRepository) => new ClassifyTransactionManually(t),
       inject: [TransactionRepository],
@@ -192,7 +198,13 @@ function openFinanceProvider(config: AppConfig, clock: Clock): OpenFinanceProvid
       inject: [CategoryRepository, CategorizationRuleRepository],
     },
   ],
-  exports: [TransactionRepository, AccountRepository, CategoryRepository, CategorizationRuleRepository],
+  exports: [
+    TransactionRepository,
+    AccountRepository,
+    CategoryRepository,
+    CategorizationRuleRepository,
+    ListIncomeEntries,
+  ],
 })
 export class LedgerModule implements OnApplicationBootstrap, OnApplicationShutdown {
   private readonly logger = new Logger(LedgerModule.name);

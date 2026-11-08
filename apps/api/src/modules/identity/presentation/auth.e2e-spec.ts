@@ -15,6 +15,7 @@ import { MongoModule } from '../../../shared/infrastructure/mongo/mongo.module.j
 import { IS_PUBLIC } from '../../../shared/presentation/public.decorator.js';
 import { HealthModule } from '../../health/health.module.js';
 import { LedgerModule } from '../../ledger/ledger.module.js';
+import { PlanningModule } from '../../planning/planning.module.js';
 import { PasskeyService, PasswordHasher } from '../application/ports/identity-ports.js';
 import { AuthService } from '../application/use-cases/auth.js';
 import { IdentityModule } from '../identity.module.js';
@@ -48,7 +49,7 @@ describe('authentication (bank-app style)', () => {
       SYNC_INTERVAL_HOURS: '0',
     });
     const moduleRef = await Test.createTestingModule({
-      imports: [DiscoveryModule, ConfigModule, MongoModule, IdentityModule, HealthModule, LedgerModule],
+      imports: [DiscoveryModule, ConfigModule, MongoModule, IdentityModule, HealthModule, LedgerModule, PlanningModule],
     })
       .overrideProvider(AppConfig)
       .useValue(config)
