@@ -2,10 +2,13 @@ import type {
   AccountDto,
   AnalysisReminderDto,
   CareerProfileDto,
+  CategorizationRuleDto,
   CategoryDto,
   ConnectionsHealthDto,
+  CreateCategoryCommand,
   CreateIncomeSourceCommand,
   CreateOpportunityCommand,
+  CreateRuleCommand,
   GoalCommand,
   GoalDto,
   GoalPlanDto,
@@ -16,11 +19,15 @@ import type {
   OpportunityDto,
   RecordAnalysisCommand,
   RequiredIncomeDto,
+  RulePreviewCommand,
+  RulePreviewDto,
   SyncRunDto,
   TransactionDto,
   TransactionPageDto,
+  UpdateCategoryCommand,
   UpdateIncomeSourceCommand,
   UpdateOpportunityCommand,
+  UpdateRuleCommand,
 } from '@finapp/contracts';
 
 /** Porta usada pelas telas de dados (o teste usa um dublê manual, FakeFinanceApi). */
@@ -31,6 +38,15 @@ export interface FinanceApi {
   transactions(search: TransactionSearch): Promise<TransactionPageDto>;
   categorize(transactionId: string, categoryId: string): Promise<TransactionDto>;
   classify(transactionId: string, classification: TransactionDto['classification']): Promise<TransactionDto>;
+
+  // Regras e categorias (as mudanças de regra são reaplicadas aos últimos 12 meses)
+  rules(): Promise<CategorizationRuleDto[]>;
+  previewRule(command: RulePreviewCommand): Promise<RulePreviewDto>;
+  createRule(command: CreateRuleCommand): Promise<{ rule: CategorizationRuleDto; affected: number }>;
+  updateRule(id: string, command: UpdateRuleCommand): Promise<{ rule: CategorizationRuleDto; affected: number }>;
+  deleteRule(id: string): Promise<{ affected: number }>;
+  createCategory(command: CreateCategoryCommand): Promise<CategoryDto>;
+  updateCategory(id: string, command: UpdateCategoryCommand): Promise<CategoryDto>;
   installments(): Promise<InstallmentPurchaseDto[]>;
   /** `full`: revisita 12 meses (aplica regras melhoradas aos meses antigos). */
   syncNow(options?: { full?: boolean }): Promise<SyncRunDto>;

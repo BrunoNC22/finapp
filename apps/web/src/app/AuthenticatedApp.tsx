@@ -1,10 +1,12 @@
 import { BrowserRouter, Route, Routes } from 'react-router';
 import { AccountsPage } from '../features/accounts/AccountsPage';
 import { CareerPage } from '../features/career/CareerPage';
+import { CategoriesPage } from '../features/categories/CategoriesPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { GoalsPage } from '../features/goals/GoalsPage';
 import { IncomePage } from '../features/income/IncomePage';
 import { InstallmentsPage } from '../features/installments/InstallmentsPage';
+import { RulesPage } from '../features/rules/RulesPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
 import { TransactionsPage } from '../features/transactions/TransactionsPage';
 import { AppShell, Placeholder } from './AppShell';
@@ -22,6 +24,8 @@ export default function AuthenticatedApp() {
           <Route path="renda" element={<IncomePage />} />
           <Route path="contas" element={<AccountsPage />} />
           <Route path="carreira" element={<CareerPage />} />
+          <Route path="regras" element={<RulesPage />} />
+          <Route path="categorias" element={<CategoriesPage />} />
           <Route path="configuracoes" element={<SettingsPage />} />
           <Route path="*" element={<Placeholder title="Página não encontrada" />} />
         </Route>

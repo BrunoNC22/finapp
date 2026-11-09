@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
+import { Link } from 'react-router';
 import { useServices } from '../../app/services';
 import { formatDate } from '../../lib/format';
 import { type ThemePreference, theme } from '../../lib/theme';
@@ -53,6 +54,15 @@ export function SettingsPage() {
           {message}
         </p>
       )}
+
+      <article className="card">
+        <h2>Categorização</h2>
+        <p className="hint">Como as transações são classificadas automaticamente.</p>
+        <div className="row">
+          <Link to="/regras">Regras de categorização</Link>
+          <Link to="/categorias">Categorias</Link>
+        </div>
+      </article>
 
       <article className="card">
         <h2>Digital</h2>

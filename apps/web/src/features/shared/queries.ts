@@ -22,6 +22,7 @@ export const financeKeys = {
   opportunities: ['finance', 'opportunities'] as const,
   analysisReminder: ['finance', 'analysis-reminder'] as const,
   connections: ['finance', 'connections'] as const,
+  rules: ['finance', 'rules'] as const,
 };
 
 export function useCategories(): CategoryDirectory {

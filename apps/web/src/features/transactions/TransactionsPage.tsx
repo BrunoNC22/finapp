@@ -1,12 +1,13 @@
 import type { TransactionDto } from '@finapp/contracts';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router';
 import { useServices } from '../../app/services';
 import { accountLabel } from '../../lib/accounts';
 import type { CategoryDirectory } from '../../lib/categories';
 import { formatDate } from '../../lib/format';
 import { addMonths, currentMonth, formatMonthLong } from '../../lib/months';
+import { RuleSuggestion } from '../rules/RuleSuggestion';
 import { Amount } from '../shared/Amount';
 import { QueryState } from '../shared/QueryState';
 import { financeKeys, useAccountNames, useAccounts, useCategories } from '../shared/queries';
@@ -37,13 +38,23 @@ export function TransactionsPage() {
     (next: TransactionFilters) => setParams(filtersToParams(next), { replace: true }),
     [setParams],
   );
+  const [suggestion, setSuggestion] = useState<{ transaction: TransactionDto; categoryId: string } | undefined>();
 
   return (
     <section className="page" aria-labelledby="transactions-title">
       <header className="page-header">
         <h1 id="transactions-title">Transações</h1>
+        <Link to="/regras">Regras de categorização</Link>
       </header>
       <Filters filters={filters} latest={latest} categories={categories} onChange={update} />
+      {suggestion && (
+        <RuleSuggestion
+          key={`${suggestion.transaction.id}:${suggestion.categoryId}`}
+          transaction={suggestion.transaction}
+          categoryId={suggestion.categoryId}
+          onClose={() => setSuggestion(undefined)}
+        />
+      )}
       <QueryState
         isPending={query.isPending}
         error={query.error}
@@ -54,7 +65,13 @@ export function TransactionsPage() {
       >
         <ul className="tx-list" aria-label="Transações">
           {items.map((t) => (
-            <TransactionRow key={t.id} transaction={t} categories={categories} accountName={accountName(t.accountId)} />
+            <TransactionRow
+              key={t.id}
+              transaction={t}
+              categories={categories}
+              accountName={accountName(t.accountId)}
+              onCategorized={(categoryId) => setSuggestion({ transaction: t, categoryId })}
+            />
           ))}
         </ul>
         {query.hasNextPage && (
@@ -201,11 +218,14 @@ function TransactionRow({
   transaction: t,
   categories,
   accountName,
+  onCategorized,
 }: {
   transaction: TransactionDto;
   categories: CategoryDirectory;
   accountName: string;
+  onCategorized: (categoryId: string) => void;
 }) {
+  const rowRef = useRef<HTMLLIElement>(null);
   const { finance } = useServices();
   const queryClient = useQueryClient();
   const [editingCategory, setEditingCategory] = useState(false);
@@ -213,8 +233,12 @@ function TransactionRow({
   const refresh = () => void queryClient.invalidateQueries({ queryKey: financeKeys.all });
   const categorize = useMutation({
     mutationFn: (categoryId: string) => finance.categorize(t.id, categoryId),
-    onSuccess: () => {
+    onSuccess: (_updated, categoryId) => {
       setEditingCategory(false);
+      onCategorized(categoryId);
+      // Categorizar em sequência pelo teclado: o foco vai para a próxima transação.
+      const next = rowRef.current?.nextElementSibling?.querySelector<HTMLElement>('.tx-category .chip');
+      next?.focus();
       refresh();
     },
   });
@@ -226,7 +250,7 @@ function TransactionRow({
   const detailId = `tx-detail-${t.id}`;
 
   return (
-    <li className={`tx-row${open ? ' open' : ''}`}>
+    <li className={`tx-row${open ? ' open' : ''}`} ref={rowRef}>
       <button
         type="button"
         className="tx-summary"

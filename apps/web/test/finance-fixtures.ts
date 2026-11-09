@@ -2,10 +2,13 @@ import type {
   AccountDto,
   AnalysisReminderDto,
   CareerProfileDto,
+  CategorizationRuleDto,
   CategoryDto,
   ConnectionsHealthDto,
+  CreateCategoryCommand,
   CreateIncomeSourceCommand,
   CreateOpportunityCommand,
+  CreateRuleCommand,
   GoalCommand,
   GoalDto,
   GoalPlanDto,
@@ -16,11 +19,14 @@ import type {
   OpportunityDto,
   RecordAnalysisCommand,
   RequiredIncomeDto,
+  RulePreviewCommand,
   SyncRunDto,
   TransactionDto,
   TransactionPageDto,
+  UpdateCategoryCommand,
   UpdateIncomeSourceCommand,
   UpdateOpportunityCommand,
+  UpdateRuleCommand,
 } from '@finapp/contracts';
 import { ApiError } from '../src/lib/api/api-client';
 import type { FinanceApi, PlanQuery, TransactionSearch } from '../src/lib/api/finance-api';
@@ -81,6 +87,25 @@ export const CATEGORIES: CategoryDto[] = [
   category('moradia.aluguel', 'Aluguel e condomínio', 'expense', 'moradia'),
   category('renda', 'Renda', 'income'),
   category('renda.servicos', 'Serviços e freelas', 'income', 'renda'),
+];
+
+export const RULES: CategorizationRuleDto[] = [
+  {
+    id: 'default-rule-1',
+    name: 'Corridas',
+    categoryId: 'alimentacao.delivery',
+    priority: 50,
+    enabled: true,
+    descriptionPattern: '^corridas?\\b',
+  },
+  {
+    id: 'r1',
+    name: 'Mercado',
+    categoryId: 'alimentacao.mercado',
+    priority: 100,
+    enabled: true,
+    descriptionContains: 'supermercado',
+  },
 ];
 
 export function aReport(month = '2026-10'): MonthlyReportDto {
@@ -434,6 +459,76 @@ export class FakeFinanceApi implements FinanceApi {
     this.replace(updated);
     return updated;
   }
+  // ---------------------------------------------------------------- regras e categorias
+  ruleList: CategorizationRuleDto[] = RULES.map((r) => ({ ...r }));
+  previewAffected = 3;
+  async rules() {
+    return [...this.ruleList].sort((a, b) => a.priority - b.priority);
+  }
+  async previewRule(command: RulePreviewCommand) {
+    this.calls.push('preview-rule');
+    this.sent.push(command);
+    return {
+      affected: this.previewAffected,
+      examples: [{ description: 'SUPERMERCADO EXEMPLO', occurredOn: '2026-10-20', from: null }],
+    };
+  }
+  async createRule(command: CreateRuleCommand) {
+    this.calls.push('create-rule');
+    this.sent.push(command);
+    const rule: CategorizationRuleDto = {
+      id: `r${this.ruleList.length + 1}`,
+      name: command.name,
+      categoryId: command.categoryId,
+      priority: command.priority ?? 100,
+      enabled: command.enabled ?? true,
+      ...(command.descriptionContains ? { descriptionContains: command.descriptionContains } : {}),
+      ...(command.counterpartyNameContains ? { counterpartyNameContains: command.counterpartyNameContains } : {}),
+    };
+    this.ruleList.push(rule);
+    return { rule, affected: this.previewAffected };
+  }
+  async updateRule(id: string, command: UpdateRuleCommand) {
+    this.calls.push(`update-rule:${id}`);
+    this.sent.push(command);
+    const current = this.ruleList.find((r) => r.id === id);
+    if (!current) throw new ApiError(404, 'não encontrada');
+    const rule = { ...current, ...Object.fromEntries(Object.entries(command).filter(([, v]) => v !== null)) };
+    this.ruleList = this.ruleList.map((r) => (r.id === id ? rule : r));
+    return { rule, affected: 1 };
+  }
+  async deleteRule(id: string) {
+    this.calls.push(`delete-rule:${id}`);
+    this.ruleList = this.ruleList.filter((r) => r.id !== id);
+    return { affected: 2 };
+  }
+  async createCategory(command: CreateCategoryCommand) {
+    this.calls.push('create-category');
+    this.sent.push(command);
+    const id = command.parentId ? `${command.parentId}.${command.name.toLowerCase()}` : command.name.toLowerCase();
+    const created: CategoryDto = {
+      id,
+      name: command.name,
+      kind: command.kind,
+      archived: false,
+      ...(command.parentId ? { parentId: command.parentId } : {}),
+    };
+    this.categoryList = [...this.categoryList, created];
+    return created;
+  }
+  async updateCategory(id: string, command: UpdateCategoryCommand) {
+    this.calls.push(`update-category:${id}`);
+    this.sent.push(command);
+    const current = this.categoryList.find((c) => c.id === id) as CategoryDto;
+    const updated = {
+      ...current,
+      ...(command.name ? { name: command.name } : {}),
+      ...(command.archived ? { archived: true } : {}),
+    };
+    this.categoryList = this.categoryList.map((c) => (c.id === id ? updated : c));
+    return updated;
+  }
+
   async classify(id: string, classification: TransactionDto['classification']) {
     this.calls.push(`classify:${id}:${classification}`);
     const updated = { ...this.find(id), classification, classificationSource: 'manual' as const };

@@ -1,4 +1,11 @@
-import type { RecordAnalysisCommand } from '@finapp/contracts';
+import type {
+  CreateCategoryCommand,
+  CreateRuleCommand,
+  RecordAnalysisCommand,
+  RulePreviewCommand,
+  UpdateCategoryCommand,
+  UpdateRuleCommand,
+} from '@finapp/contracts';
 import {
   AccountSchema,
   AnalysisReminderSchema,
@@ -6,6 +13,7 @@ import {
   AuthStatusSchema,
   type CareerProfileDto,
   CareerProfileSchema,
+  CategorizationRuleSchema,
   CategorySchema,
   ConnectionsHealthSchema,
   type CreateIncomeSourceCommand,
@@ -21,6 +29,7 @@ import {
   MonthlyReportSchema,
   OpportunitySchema,
   RequiredIncomeSchema,
+  RulePreviewSchema,
   type SessionDto,
   SessionSchema,
   SyncRunSchema,
@@ -30,9 +39,12 @@ import {
   type UpdateIncomeSourceCommand,
   type UpdateOpportunityCommand,
 } from '@finapp/contracts';
-import type { ZodType } from 'zod';
+import { type ZodType, z } from 'zod';
 import type { SessionStore } from '../session/session-store';
 import { type FinanceApi, type PlanQuery, searchToQueryString, type TransactionSearch } from './finance-api';
+
+const RuleChangeSchema = z.object({ rule: CategorizationRuleSchema, affected: z.number().int() });
+const AffectedSchema = z.object({ affected: z.number().int() });
 
 export class ApiError extends Error {
   constructor(
@@ -136,6 +148,27 @@ export class ApiClient implements AuthApi, FinanceApi {
     return this.request('PATCH', `/transactions/${encodeURIComponent(transactionId)}/category`, TransactionSchema, {
       categoryId,
     });
+  }
+  rules() {
+    return this.request('GET', '/categorization-rules', CategorizationRuleSchema.array());
+  }
+  previewRule(command: RulePreviewCommand) {
+    return this.request('POST', '/categorization-rules/preview', RulePreviewSchema, command);
+  }
+  createRule(command: CreateRuleCommand) {
+    return this.request('POST', '/categorization-rules', RuleChangeSchema, command);
+  }
+  updateRule(id: string, command: UpdateRuleCommand) {
+    return this.request('PATCH', `/categorization-rules/${encodeURIComponent(id)}`, RuleChangeSchema, command);
+  }
+  deleteRule(id: string) {
+    return this.request('DELETE', `/categorization-rules/${encodeURIComponent(id)}`, AffectedSchema);
+  }
+  createCategory(command: CreateCategoryCommand) {
+    return this.request('POST', '/categories', CategorySchema, command);
+  }
+  updateCategory(id: string, command: UpdateCategoryCommand) {
+    return this.request('PATCH', `/categories/${encodeURIComponent(id)}`, CategorySchema, command);
   }
   classify(transactionId: string, classification: TransactionDto['classification']) {
     return this.request(
