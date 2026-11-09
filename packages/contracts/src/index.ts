@@ -106,7 +106,7 @@ export type CategoryDto = z.infer<typeof CategorySchema>;
 
 export const RuleConditionsSchema = z.object({
   descriptionContains: z.string().trim().min(1).optional(),
-  descriptionPattern: z.string().min(1).optional(),
+  descriptionPattern: z.string().min(1).max(120).optional(),
   counterpartyNameContains: z.string().trim().min(1).optional(),
   accountId: z.string().min(1).optional(),
   paymentMethod: PaymentMethodSchema.optional(),

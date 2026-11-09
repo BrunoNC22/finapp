@@ -35,6 +35,15 @@ describe('CategorizationRule', () => {
     expect(() => rule({ categoryId: 'x', descriptionPattern: '([' })).toThrow(InvalidRuleError);
   });
 
+  it('refuses patterns that could freeze the sync (catastrophic backtracking) and very long ones', () => {
+    for (const pattern of ['(a+)+$', '(x*)*', '(\\w+\\s?)*$', '(ab{1,})+', 'a'.repeat(121)]) {
+      expect(() => rule({ categoryId: 'x', descriptionPattern: pattern }), pattern).toThrow(InvalidRuleError);
+    }
+    for (const pattern of ['^corridas?\\b', '(uber|99) ?pop', 'mercado|padaria', '^pix (enviado|recebido)']) {
+      expect(() => rule({ categoryId: 'x', descriptionPattern: pattern }), pattern).not.toThrow();
+    }
+  });
+
   it('requires at least one condition', () => {
     expect(() => rule({ categoryId: 'x' })).toThrow(InvalidRuleError);
   });

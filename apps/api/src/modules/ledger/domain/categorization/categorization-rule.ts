@@ -50,6 +50,13 @@ export function foldText(text: string): string {
  * Regra do usuário: "transações que batem com estas condições vão para esta categoria".
  * Vive no banco (pode conter nomes e documentos de pessoas), nunca no código.
  */
+const MAX_PATTERN_LENGTH = 120;
+/**
+ * Grupo com quantificador dentro e outro logo depois, como (a+)+ ou (\w+\s?)*: padrão clássico de backtracking
+ * catastrófico (ReDoS), que travaria a sincronização inteira numa descrição longa.
+ */
+const NESTED_QUANTIFIER = /\([^)]*(?:[+*]|\{\d*,\d*\})[^)]*\)\s*(?:[+*]|\{\d*,)/;
+
 export class CategorizationRule {
   private constructor(
     readonly props: CategorizationRuleProps,
@@ -64,6 +71,9 @@ export class CategorizationRule {
     }
     let pattern: RegExp | undefined;
     if (props.descriptionPattern) {
+      if (props.descriptionPattern.length > MAX_PATTERN_LENGTH || NESTED_QUANTIFIER.test(props.descriptionPattern)) {
+        throw new InvalidRuleError('expressão regular longa ou complexa demais (evite quantificadores aninhados)');
+      }
       try {
         pattern = new RegExp(props.descriptionPattern, 'i');
       } catch {
