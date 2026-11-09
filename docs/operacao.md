@@ -111,4 +111,12 @@ restic dump latest finapp-mongo.archive.gz \
          --username "$MONGO_INITDB_ROOT_USERNAME" --password "$MONGO_INITDB_ROOT_PASSWORD"'
 ```
 
-Teste a restauração de vez em quando. Backup que nunca foi restaurado não é backup.
+Backup que nunca foi restaurado não é backup. Ensaie a cada trimestre, sem tocar no banco da instância:
+
+```sh
+scripts/restore-drill.sh
+```
+
+Ele restaura o último snapshot num MongoDB temporário (em memória e sem rede), compara a contagem de documentos de
+cada coleção com a instância (só nomes e números) e falha se contas, transações ou categorias vierem vazias. Registre a
+data de cada ensaio; dá para agendar com um timer do systemd que roda o script quando o último ensaio passar de 90 dias.
