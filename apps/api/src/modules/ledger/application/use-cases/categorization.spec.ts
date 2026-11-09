@@ -13,8 +13,13 @@ import { DEFAULT_CATEGORIES } from '../../domain/categorization/default-taxonomy
 import {
   CategorizeTransactionManually,
   CreateCategorizationRule,
+  DefaultRuleCannotBeDeletedError,
+  DeleteCategorizationRule,
+  PreviewCategorizationRule,
   SeedDefaultCategorization,
   UnknownCategoryError,
+  UnknownRuleError,
+  UpdateCategorizationRule,
 } from './categorization.js';
 
 describe('categorization use cases', () => {
@@ -107,6 +112,108 @@ describe('categorization use cases', () => {
           rule: { name: 'x', categoryId: 'nao.existe', priority: 1, enabled: true, descriptionContains: 'x' },
         }),
       ).rejects.toThrow(UnknownCategoryError);
+    });
+  });
+
+  describe('managing rules (preview, edit, delete) re-applies to the last months, never to manual choices', () => {
+    const period = { from: LocalDate.parse('2026-01-01'), to: LocalDate.parse('2026-12-31') };
+    const market = (id: string, on: string) =>
+      aTransaction().withId(id).withDescription('SUPERMERCADO BOM PRECO').withPaymentMethod('pix').on(on).build();
+    const rule = {
+      name: 'Mercado',
+      categoryId: 'alimentacao.mercado',
+      priority: 10,
+      enabled: true,
+      descriptionContains: 'supermercado',
+    };
+
+    it('previews how many transactions a rule would change, with examples, without saving anything', async () => {
+      const manual = market('t3', '2026-05-01');
+      manual.categorize('outros', 'manual');
+      await transactions.saveMany([market('t1', '2026-03-01'), market('t2', '2026-04-01'), manual]);
+      const preview = await new PreviewCategorizationRule(rules, categories, transactions, categorizer).execute(
+        rule,
+        period,
+      );
+      expect(preview.affected).toBe(2);
+      expect(preview.examples).toEqual([
+        { description: 'SUPERMERCADO BOM PRECO', occurredOn: '2026-04-01', from: null },
+        { description: 'SUPERMERCADO BOM PRECO', occurredOn: '2026-03-01', from: null },
+      ]);
+      expect((await transactions.findById('t1'))?.category).toBeUndefined();
+      expect((await rules.findAll()).some((r) => r.props.name === 'Mercado')).toBe(false);
+    });
+
+    it('editing: disabling a rule undoes its effect; changing the category moves the transactions', async () => {
+      await transactions.saveMany([market('t1', '2026-03-01'), market('t2', '2026-04-01')]);
+      const { ruleId } = await new CreateCategorizationRule(
+        rules,
+        categories,
+        transactions,
+        categorizer,
+        new SequentialIdGenerator('rule'),
+      ).execute({ rule, applyTo: period });
+      const update = new UpdateCategorizationRule(rules, categories, transactions, categorizer);
+
+      const moved = await update.execute(ruleId, { categoryId: 'alimentacao.restaurantes' }, period);
+      expect(moved.affected).toBe(2);
+      expect((await transactions.findById('t1'))?.category?.categoryId).toBe('alimentacao.restaurantes');
+
+      const off = await update.execute(ruleId, { enabled: false }, period);
+      expect(off.affected).toBe(2);
+      expect((await transactions.findById('t1'))?.category?.source).not.toBe('rule');
+      expect((await rules.findById(ruleId))?.props.enabled).toBe(false);
+
+      await expect(update.execute('nao-existe', { enabled: true }, period)).rejects.toThrow(UnknownRuleError);
+      await expect(update.execute(ruleId, { categoryId: 'nao-existe' }, period)).rejects.toThrow(UnknownCategoryError);
+    });
+
+    it('turning a rule off also fixes WHO categorized, even when the provider suggests the same category', async () => {
+      const fromProvider = aTransaction()
+        .withId('t1')
+        .withDescription('SUPERMERCADO BOM PRECO')
+        .withProviderCategory('prov-market')
+        .on('2026-03-01')
+        .build();
+      await transactions.saveMany([fromProvider]);
+      const withProvider = new Categorizer(new StubProviderCategoryMap({ 'prov-market': 'alimentacao.mercado' }));
+      const { ruleId } = await new CreateCategorizationRule(
+        rules,
+        categories,
+        transactions,
+        withProvider,
+        new SequentialIdGenerator('rule'),
+      ).execute({ rule, applyTo: period });
+      expect((await transactions.findById('t1'))?.category).toEqual({
+        categoryId: 'alimentacao.mercado',
+        source: 'rule',
+      });
+
+      const off = await new UpdateCategorizationRule(rules, categories, transactions, withProvider).execute(
+        ruleId,
+        { enabled: false },
+        period,
+      );
+      expect(off.affected).toBe(0); // a categoria não mudou...
+      expect((await transactions.findById('t1'))?.category?.source).toBe('provider'); // ...mas a origem sim
+    });
+
+    it('deleting removes the rule and its effect; default rules can only be turned off (they come back on boot)', async () => {
+      await transactions.saveMany([market('t1', '2026-03-01')]);
+      const { ruleId } = await new CreateCategorizationRule(
+        rules,
+        categories,
+        transactions,
+        categorizer,
+        new SequentialIdGenerator('rule'),
+      ).execute({ rule, applyTo: period });
+      const remove = new DeleteCategorizationRule(rules, transactions, categorizer);
+
+      expect((await remove.execute(ruleId, period)).affected).toBe(1);
+      expect(await rules.findById(ruleId)).toBeUndefined();
+      expect((await transactions.findById('t1'))?.category?.source).not.toBe('rule');
+      await expect(remove.execute('default-rule-1', period)).rejects.toThrow(DefaultRuleCannotBeDeletedError);
+      await expect(remove.execute('nao-existe', period)).rejects.toThrow(UnknownRuleError);
     });
   });
 

@@ -16,7 +16,10 @@ import { TransactionRepository } from './application/ports/transaction-repositor
 import {
   CategorizeTransactionManually,
   CreateCategorizationRule,
+  DeleteCategorizationRule,
+  PreviewCategorizationRule,
   SeedDefaultCategorization,
+  UpdateCategorizationRule,
 } from './application/use-cases/categorization.js';
 import { GetConnectionsHealth } from './application/use-cases/connections.js';
 import { GetAvailableBalance, GetCostOfLiving } from './application/use-cases/cost-of-living.js';
@@ -159,6 +162,35 @@ function openFinanceProvider(config: AppConfig, clock: Clock): OpenFinanceProvid
         OpenFinanceProvider,
         IdGenerator,
       ],
+    },
+    {
+      provide: PreviewCategorizationRule,
+      useFactory: (
+        rules: CategorizationRuleRepository,
+        categories: CategoryRepository,
+        transactions: TransactionRepository,
+        provider: OpenFinanceProvider,
+      ) => new PreviewCategorizationRule(rules, categories, transactions, new Categorizer(provider.categoryMap)),
+      inject: [CategorizationRuleRepository, CategoryRepository, TransactionRepository, OpenFinanceProvider],
+    },
+    {
+      provide: UpdateCategorizationRule,
+      useFactory: (
+        rules: CategorizationRuleRepository,
+        categories: CategoryRepository,
+        transactions: TransactionRepository,
+        provider: OpenFinanceProvider,
+      ) => new UpdateCategorizationRule(rules, categories, transactions, new Categorizer(provider.categoryMap)),
+      inject: [CategorizationRuleRepository, CategoryRepository, TransactionRepository, OpenFinanceProvider],
+    },
+    {
+      provide: DeleteCategorizationRule,
+      useFactory: (
+        rules: CategorizationRuleRepository,
+        transactions: TransactionRepository,
+        provider: OpenFinanceProvider,
+      ) => new DeleteCategorizationRule(rules, transactions, new Categorizer(provider.categoryMap)),
+      inject: [CategorizationRuleRepository, TransactionRepository, OpenFinanceProvider],
     },
     {
       provide: GetInstallmentPurchases,

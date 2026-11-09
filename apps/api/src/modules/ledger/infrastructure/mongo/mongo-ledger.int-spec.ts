@@ -91,6 +91,8 @@ describe('MongoDB ledger adapters', () => {
 
     expect((await categories.findById('moradia.aluguel'))?.snapshot()).toEqual(category.snapshot());
     expect((await rules.findById('r1'))?.props).toEqual(rule.props);
+    await rules.delete('r1');
+    expect(await rules.findById('r1')).toBeUndefined();
   });
 
   it('lock: exclusive while held, free after release, and recoverable when expired', async () => {

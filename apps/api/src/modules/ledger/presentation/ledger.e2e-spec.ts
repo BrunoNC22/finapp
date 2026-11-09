@@ -4,6 +4,7 @@ import {
   CategorySchema,
   InstallmentPurchaseSchema,
   MonthlyReportSchema,
+  RulePreviewSchema,
   TransactionPageSchema,
   TransactionSchema,
 } from '@finapp/contracts';
@@ -27,8 +28,8 @@ describe('ledger HTTP API (demo provider, real MongoDB)', () => {
   let app: NestFastifyApplication;
 
   const get = async (url: string) => app.inject({ method: 'GET', url });
-  const send = async (method: 'POST' | 'PATCH', url: string, payload: Record<string, unknown>) =>
-    app.inject({ method, url, payload });
+  const send = async (method: 'POST' | 'PATCH' | 'DELETE', url: string, payload?: Record<string, unknown>) =>
+    app.inject({ method, url, ...(payload ? { payload } : {}) });
   const noDocuments = (body: string) => DEMO_DOCUMENTS.every((d) => !body.includes(d));
 
   beforeAll(async () => {
@@ -157,6 +158,48 @@ describe('ledger HTTP API (demo provider, real MongoDB)', () => {
     const snacks = TransactionPageSchema.parse((await get('/transactions?q=lanchonete&limit=200')).json()).items;
     expect(snacks.every((t) => t.category?.id === 'lazer.outros')).toBe(true);
     expect(CategorizationRuleSchema.array().parse((await get('/categorization-rules')).json()).length).toBe(2);
+  });
+
+  it('rules: preview the impact, edit (turn off undoes it), delete; defaults can only be turned off', async () => {
+    // Os testes deste arquivo rodam em ordem aleatória sobre o mesmo banco: nada de contagens exatas, e limpeza garantida.
+    const rule = { name: 'Mercado no Pix', categoryId: 'alimentacao.mercado', descriptionContains: 'supermercado' };
+    const preview = RulePreviewSchema.parse((await send('POST', '/categorization-rules/preview', rule)).json());
+    expect(preview.examples.length).toBeLessThanOrEqual(Math.min(5, preview.affected));
+    expect(
+      (await send('POST', '/categorization-rules/preview', { ...rule, categoryId: 'nao-existe' })).statusCode,
+    ).toBe(404);
+
+    // No demo, nenhuma outra regra pega "supermercado": as que vêm de regra são desta.
+    const byRule = async (_id: string) =>
+      TransactionPageSchema.parse((await get('/transactions?q=supermercado&limit=200')).json()).items.filter(
+        (t) => t.category?.source === 'rule',
+      );
+    const created = (await send('POST', '/categorization-rules', { ...rule, categoryId: 'lazer.outros' })).json();
+    const id = created.rule.id as string;
+    try {
+      const moved = await send('PATCH', `/categorization-rules/${id}`, { categoryId: 'alimentacao.mercado' });
+      expect(moved.statusCode).toBe(200);
+      expect(moved.json().rule.categoryId).toBe('alimentacao.mercado');
+      expect((await byRule(id)).every((t) => t.category?.id === 'alimentacao.mercado')).toBe(true);
+
+      const off = await send('PATCH', `/categorization-rules/${id}`, {
+        enabled: false,
+        descriptionContains: null,
+        descriptionPattern: 'supermercado',
+      });
+      expect(off.json().rule).toMatchObject({ enabled: false, descriptionPattern: 'supermercado' });
+      expect(off.json().rule.descriptionContains).toBeUndefined();
+      expect(await byRule(id)).toEqual([]);
+    } finally {
+      expect((await send('DELETE', `/categorization-rules/${id}`)).statusCode).toBe(200);
+    }
+    expect((await send('DELETE', `/categorization-rules/${id}`)).statusCode).toBe(404);
+    expect((await send('DELETE', '/categorization-rules/default-rule-1')).statusCode).toBe(422);
+    try {
+      expect((await send('PATCH', '/categorization-rules/default-rule-1', { enabled: false })).statusCode).toBe(200);
+    } finally {
+      await send('PATCH', '/categorization-rules/default-rule-1', { enabled: true });
+    }
   });
 
   it('GET /installments shows purchases and what is still due', async () => {

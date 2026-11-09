@@ -30,6 +30,9 @@ export class InMemoryCategorizationRuleRepository extends CategorizationRuleRepo
   async findAll(): Promise<CategorizationRule[]> {
     return [...this.rows.values()].map((row) => CategorizationRule.create(row));
   }
+  async delete(id: string): Promise<void> {
+    this.rows.delete(id);
+  }
 }
 
 /** Stub do mapa de categorias do provedor. */

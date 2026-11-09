@@ -151,6 +151,10 @@ export class MongoCategorizationRuleRepository extends CategorizationRuleReposit
   async findAll(): Promise<CategorizationRule[]> {
     return (await this.collection.find().sort({ priority: 1, _id: 1 }).toArray()).map(toRule);
   }
+
+  async delete(id: string): Promise<void> {
+    await this.collection.deleteOne({ _id: id });
+  }
 }
 
 function toRule({ _id, minAmountCents, maxAmountCents, ...rest }: RuleDocument): CategorizationRule {

@@ -11,14 +11,20 @@ import {
   type CreateRuleCommand,
   CreateRuleCommandSchema,
   type InstallmentPurchaseDto,
+  type RulePreviewCommand,
+  RulePreviewCommandSchema,
+  type RulePreviewDto,
   type TransactionDto,
   type TransactionListQuery,
   TransactionListQuerySchema,
   type TransactionPageDto,
   type UpdateCategoryCommand,
   UpdateCategoryCommandSchema,
+  type UpdateRuleCommand,
+  UpdateRuleCommandSchema,
 } from '@finapp/contracts';
-import { Body, Controller, Get, HttpCode, Inject, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Patch, Post, Query } from '@nestjs/common';
+import type { z } from 'zod';
 import { Clock } from '../../../shared/application/clock.js';
 import { LocalDate } from '../../../shared/kernel/local-date.js';
 import { Money } from '../../../shared/kernel/money.js';
@@ -32,7 +38,10 @@ import { TransactionRepository } from '../application/ports/transaction-reposito
 import {
   CategorizeTransactionManually,
   CreateCategorizationRule,
+  DeleteCategorizationRule,
+  PreviewCategorizationRule,
   UnknownTransactionError,
+  UpdateCategorizationRule,
 } from '../application/use-cases/categorization.js';
 import {
   ClassifyTransactionManually,
@@ -157,8 +166,17 @@ export class CategorizationRulesController {
   constructor(
     @Inject(CategorizationRuleRepository) private readonly rules: CategorizationRuleRepository,
     @Inject(CreateCategorizationRule) private readonly create: CreateCategorizationRule,
+    @Inject(PreviewCategorizationRule) private readonly preview: PreviewCategorizationRule,
+    @Inject(UpdateCategorizationRule) private readonly update: UpdateCategorizationRule,
+    @Inject(DeleteCategorizationRule) private readonly remove: DeleteCategorizationRule,
     @Inject(Clock) private readonly clock: Clock,
   ) {}
+
+  /** Os últimos 12 meses: a janela em que regras novas ou editadas são reaplicadas. */
+  private lastYear() {
+    const today = LocalDate.fromInstant(this.clock.now(), 'America/Sao_Paulo');
+    return { from: today.addMonths(-12), to: today };
+  }
 
   @Get()
   async list(): Promise<CategorizationRuleDto[]> {
@@ -187,6 +205,47 @@ export class CategorizationRulesController {
     });
     const rule = await this.rules.findById(result.ruleId);
     return { rule: toRuleDto(rule as NonNullable<typeof rule>), affected: result.affected };
+  }
+
+  @Post('preview')
+  @HttpCode(200)
+  async previewRule(@Body(new ZodPipe(RulePreviewCommandSchema)) body: RulePreviewCommand): Promise<RulePreviewDto> {
+    const { replacing, minAmountCents, maxAmountCents, name, categoryId, priority, enabled, ...conditions } =
+      body as z.output<typeof RulePreviewCommandSchema>;
+    return this.preview.execute(
+      {
+        name,
+        categoryId,
+        priority,
+        enabled,
+        ...withoutUndefined(conditions),
+        ...(minAmountCents !== undefined ? { minAmount: Money.fromCents(minAmountCents) } : {}),
+        ...(maxAmountCents !== undefined ? { maxAmount: Money.fromCents(maxAmountCents) } : {}),
+      },
+      this.lastYear(),
+      replacing,
+    );
+  }
+
+  @Patch(':id')
+  async change(
+    @Param('id') id: string,
+    @Body(new ZodPipe(UpdateRuleCommandSchema)) body: UpdateRuleCommand,
+  ): Promise<{ rule: CategorizationRuleDto; affected: number }> {
+    const { minAmountCents, maxAmountCents, ...rest } = body;
+    const toMoney = (cents: number | null | undefined) =>
+      cents === null ? null : cents === undefined ? undefined : Money.fromCents(cents);
+    const result = await this.update.execute(
+      id,
+      withoutUndefined({ ...rest, minAmount: toMoney(minAmountCents), maxAmount: toMoney(maxAmountCents) }),
+      this.lastYear(),
+    );
+    return { rule: toRuleDto(result.rule), affected: result.affected };
+  }
+
+  @Delete(':id')
+  removeRule(@Param('id') id: string): Promise<{ affected: number }> {
+    return this.remove.execute(id, this.lastYear());
   }
 }
 

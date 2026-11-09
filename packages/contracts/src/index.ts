@@ -160,6 +160,34 @@ export const CreateRuleCommandSchema = RuleConditionsSchema.extend({
 });
 export type CreateRuleCommand = z.infer<typeof CreateRuleCommandSchema>;
 
+/** Prévia de impacto de uma regra nova (ou de uma edição: `replacing` = id da regra editada). Não salva nada. */
+export const RulePreviewCommandSchema = CreateRuleCommandSchema.omit({ applyToExisting: true }).extend({
+  replacing: z.string().min(1).optional(),
+});
+export type RulePreviewCommand = z.input<typeof RulePreviewCommandSchema>;
+export const RulePreviewSchema = z.object({
+  affected: z.number().int(),
+  examples: z.array(z.object({ description: z.string(), occurredOn: z.string(), from: z.string().nullable() })),
+});
+export type RulePreviewDto = z.infer<typeof RulePreviewSchema>;
+
+/** PATCH de regra: campos ausentes não mudam; `null` remove uma condição. Reaplica aos últimos 12 meses. */
+export const UpdateRuleCommandSchema = z.object({
+  name: z.string().trim().min(1).max(80).optional(),
+  categoryId: z.string().min(1).optional(),
+  priority: z.number().int().min(0).max(10_000).optional(),
+  enabled: z.boolean().optional(),
+  descriptionContains: z.string().trim().min(1).nullable().optional(),
+  descriptionPattern: z.string().min(1).max(120).nullable().optional(),
+  counterpartyNameContains: z.string().trim().min(1).nullable().optional(),
+  accountId: z.string().min(1).nullable().optional(),
+  paymentMethod: PaymentMethodSchema.nullable().optional(),
+  direction: z.enum(['inflow', 'outflow']).nullable().optional(),
+  minAmountCents: z.number().int().min(0).nullable().optional(),
+  maxAmountCents: z.number().int().min(0).nullable().optional(),
+});
+export type UpdateRuleCommand = z.infer<typeof UpdateRuleCommandSchema>;
+
 export const CreateCategoryCommandSchema = z.object({
   name: z.string().trim().min(1).max(60),
   kind: CategoryKindSchema,
