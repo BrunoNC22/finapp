@@ -1,5 +1,6 @@
 import type {
   AccountDto,
+  AnalysisReminderDto,
   CareerProfileDto,
   CategoryDto,
   CreateIncomeSourceCommand,
@@ -12,6 +13,7 @@ import type {
   InstallmentPurchaseDto,
   MonthlyReportDto,
   OpportunityDto,
+  RecordAnalysisCommand,
   RequiredIncomeDto,
   SyncRunDto,
   TransactionDto,
@@ -560,6 +562,16 @@ export class FakeFinanceApi implements FinanceApi {
   async deleteOpportunity(id: string) {
     this.calls.push(`delete-opportunity:${id}`);
     this.opportunityList = this.opportunityList.filter((o) => o.id !== id);
+  }
+  // ---------------------------------------------------------------- rotina mensal
+  reminder: AnalysisReminderDto = { month: '2026-10', pending: true };
+  async analysisReminder() {
+    return this.reminder;
+  }
+  async recordAnalysis(month: string, outcome: RecordAnalysisCommand['outcome']) {
+    this.calls.push(`record-analysis:${month}:${outcome}`);
+    this.reminder = { month, pending: false, outcome, recordedAt: '2026-11-09T12:00:00.000Z' };
+    return this.reminder;
   }
 
   async requiredIncome(query: PlanQuery & { deadline?: string }): Promise<RequiredIncomeDto> {

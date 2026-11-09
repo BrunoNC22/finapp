@@ -5,6 +5,7 @@ import { HealthModule } from './modules/health/health.module.js';
 import { IdentityModule } from './modules/identity/identity.module.js';
 import { LedgerModule } from './modules/ledger/ledger.module.js';
 import { PlanningModule } from './modules/planning/planning.module.js';
+import { RoutineModule } from './modules/routine/routine.module.js';
 import { ConfigModule } from './shared/config/config.module.js';
 import { LoggingModule } from './shared/infrastructure/logging/logging.module.js';
 import { MongoModule } from './shared/infrastructure/mongo/mongo.module.js';
@@ -20,6 +21,7 @@ import { MongoModule } from './shared/infrastructure/mongo/mongo.module.js';
     LedgerModule,
     PlanningModule,
     CareerModule,
+    RoutineModule,
     AssistantModule,
   ],
 })

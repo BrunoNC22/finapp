@@ -569,3 +569,16 @@ export const UpdateOpportunityCommandSchema = z.object({
   notes: text(2000).optional(),
 });
 export type UpdateOpportunityCommand = z.input<typeof UpdateOpportunityCommandSchema>;
+
+// ---------------------------------------------------------------- rotina mensal (#28)
+export const AnalysisOutcomeSchema = z.enum(['feita', 'pulada']);
+/** Lembrete da análise mensal: o último mês fechado e se a análise dele já foi feita (ou pulada). */
+export const AnalysisReminderSchema = z.object({
+  month: YearMonthSchema,
+  pending: z.boolean(),
+  outcome: AnalysisOutcomeSchema.optional(),
+  recordedAt: z.iso.datetime().optional(),
+});
+export type AnalysisReminderDto = z.infer<typeof AnalysisReminderSchema>;
+export const RecordAnalysisCommandSchema = z.object({ outcome: AnalysisOutcomeSchema });
+export type RecordAnalysisCommand = z.infer<typeof RecordAnalysisCommandSchema>;

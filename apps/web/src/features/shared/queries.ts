@@ -20,6 +20,7 @@ export const financeKeys = {
   requiredIncome: (deadline: string) => ['finance', 'required-income', deadline] as const,
   careerProfile: ['finance', 'career-profile'] as const,
   opportunities: ['finance', 'opportunities'] as const,
+  analysisReminder: ['finance', 'analysis-reminder'] as const,
 };
 
 export function useCategories(): CategoryDirectory {

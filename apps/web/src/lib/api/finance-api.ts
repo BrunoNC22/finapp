@@ -1,5 +1,6 @@
 import type {
   AccountDto,
+  AnalysisReminderDto,
   CareerProfileDto,
   CategoryDto,
   CreateIncomeSourceCommand,
@@ -12,6 +13,7 @@ import type {
   InstallmentPurchaseDto,
   MonthlyReportDto,
   OpportunityDto,
+  RecordAnalysisCommand,
   RequiredIncomeDto,
   SyncRunDto,
   TransactionDto,
@@ -51,13 +53,17 @@ export interface FinanceApi {
   requiredIncome(query: PlanQuery & { deadline?: string }): Promise<RequiredIncomeDto>;
 
   // Carreira
-  /** undefined enquanto o perfil não foi preenchido. */
+  /** null enquanto o perfil não foi preenchido. */
   careerProfile(): Promise<CareerProfileDto | null>;
   saveCareerProfile(profile: CareerProfileDto): Promise<CareerProfileDto>;
   opportunities(): Promise<OpportunityDto[]>;
   createOpportunity(command: CreateOpportunityCommand): Promise<OpportunityDto>;
   updateOpportunity(id: string, command: UpdateOpportunityCommand): Promise<OpportunityDto>;
   deleteOpportunity(id: string): Promise<void>;
+
+  // Rotina mensal
+  analysisReminder(): Promise<AnalysisReminderDto>;
+  recordAnalysis(month: string, outcome: RecordAnalysisCommand['outcome']): Promise<AnalysisReminderDto>;
 }
 
 export interface PlanQuery {

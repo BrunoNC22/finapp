@@ -8,6 +8,8 @@ import { AuthService } from './modules/identity/application/use-cases/auth.js';
 import { McpAccess } from './modules/identity/application/use-cases/mcp-access.js';
 import { IdentityModule } from './modules/identity/identity.module.js';
 import { LedgerModule } from './modules/ledger/ledger.module.js';
+import { RecordMonthlyAnalysis } from './modules/routine/application/monthly-analysis-routine.js';
+import { RoutineModule } from './modules/routine/routine.module.js';
 import { AppConfig } from './shared/config/app-config.js';
 import { ConfigModule } from './shared/config/config.module.js';
 import { MongoModule } from './shared/infrastructure/mongo/mongo.module.js';
@@ -20,6 +22,7 @@ import { MongoModule } from './shared/infrastructure/mongo/mongo.module.js';
  *   node dist/cli.js mcp-revoke           → revoga todos os tokens MCP
  *   node dist/cli.js analise-mensal [AAAA-MM] → JSON do pacote da análise mensal (o mesmo da ferramenta MCP
  *                                          analise_mensal), para analisar sem conectar o MCP; sem mês: o último fechado
+ *   node dist/cli.js analise-feita [AAAA-MM]  → marca a análise do mês como feita (tira o lembrete do app)
  */
 @Module({ imports: [ConfigModule, MongoModule, IdentityModule] })
 class CliModule {}
@@ -27,14 +30,18 @@ class CliModule {}
 @Module({ imports: [ConfigModule, MongoModule, AssistantModule] })
 class AnalysisCliModule {}
 
+@Module({ imports: [ConfigModule, MongoModule, RoutineModule] })
+class RoutineCliModule {}
+
 async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2);
-  const commands = ['setup-token', 'mcp-token', 'mcp-tokens', 'mcp-revoke', 'analise-mensal'];
+  const commands = ['setup-token', 'mcp-token', 'mcp-tokens', 'mcp-revoke', 'analise-mensal', 'analise-feita'];
   if (!command || !commands.includes(command)) {
     console.error(`uso: node dist/cli.js ${commands.join(' | ')}`);
     process.exit(2);
   }
   if (command === 'analise-mensal') return analysis(args[0]);
+  if (command === 'analise-feita') return markDone(args[0]);
   AppConfig.fromEnv(process.env);
   const app = await NestFactory.createApplicationContext(CliModule, { logger: false });
   try {
@@ -76,6 +83,22 @@ async function analysis(month: string | undefined): Promise<void> {
     const pack = await monthlyAnalysisPack(app.get(AssistantData), month);
     // biome-ignore lint/suspicious/noConsole: saída do comando (JSON, para ser canalizado)
     console.log(JSON.stringify(pack, null, 1));
+  } finally {
+    await app.close();
+  }
+}
+
+/** Chamado pela skill ao registrar a análise: o lembrete some do Painel. */
+async function markDone(month: string | undefined): Promise<void> {
+  AppConfig.fromEnv(process.env);
+  const app = await NestFactory.createApplicationContext(RoutineCliModule, { logger: false });
+  try {
+    const record = await app.get(RecordMonthlyAnalysis).execute({
+      ...(month ? { month } : {}),
+      outcome: 'feita',
+      via: 'skill',
+    });
+    console.error(`Análise de ${record.month} registrada como feita.`);
   } finally {
     await app.close();
   }

@@ -21,6 +21,7 @@ import { MonthPicker } from '../shared/MonthPicker';
 import { QueryState } from '../shared/QueryState';
 import { financeKeys, useAccountNames, useCategories } from '../shared/queries';
 import { paymentBadge } from '../transactions/transaction-labels';
+import { AnalysisReminder } from './AnalysisReminder';
 import { spendingByGroup, spendingHighlights } from './highlights';
 import { incomeBars } from './income-sources';
 
@@ -40,6 +41,7 @@ export function DashboardPage() {
         <h1 id="dashboard-title">Painel</h1>
         <MonthPicker month={month} latest={latest} onChange={(m) => setParams({ mes: m })} />
       </header>
+      <AnalysisReminder />
       <QueryState isPending={report.isPending} error={report.error} onRetry={() => void report.refetch()} skeletons={4}>
         {report.data && <Dashboard report={report.data} categories={categories} month={month} />}
       </QueryState>

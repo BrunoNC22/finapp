@@ -60,6 +60,9 @@ docker compose exec -T api node dist/cli.js analise-mensal          # último m�
 docker compose exec -T api node dist/cli.js analise-mensal 2026-10  # um mês específico
 ```
 
+O Painel lembra da análise do último mês fechado até ela ser registrada. A skill de análise marca sozinha
+(`node dist/cli.js analise-feita [AAAA-MM]`); no app, dá para marcar "Já fiz" ou "Pular este mês".
+
 ## Depois de reiniciar a máquina
 
 ```sh

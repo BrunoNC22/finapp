@@ -1,5 +1,7 @@
+import type { RecordAnalysisCommand } from '@finapp/contracts';
 import {
   AccountSchema,
+  AnalysisReminderSchema,
   type AuthStatusDto,
   AuthStatusSchema,
   type CareerProfileDto,
@@ -220,6 +222,12 @@ export class ApiClient implements AuthApi, FinanceApi {
   }
   async deleteOpportunity(id: string) {
     await this.request('DELETE', `/career/opportunities/${encodeURIComponent(id)}`);
+  }
+  analysisReminder() {
+    return this.request('GET', '/routine/analysis', AnalysisReminderSchema);
+  }
+  recordAnalysis(month: string, outcome: RecordAnalysisCommand['outcome']) {
+    return this.request('POST', `/routine/analysis/${encodeURIComponent(month)}`, AnalysisReminderSchema, { outcome });
   }
 
   /** Requisição genérica. */

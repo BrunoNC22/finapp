@@ -1052,3 +1052,20 @@ label.check {
   font-size: 0.85rem;
   font-weight: 600;
 }
+
+/* ===================================================================== lembrete da análise mensal (#28) */
+.reminder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border-left: 4px solid var(--accent);
+}
+.reminder p {
+  margin: 4px 0 0;
+}
+.reminder code {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 0.9em;
+}
