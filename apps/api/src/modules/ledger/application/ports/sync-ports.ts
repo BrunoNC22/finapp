@@ -20,6 +20,14 @@ export interface SyncAccountResult {
   readonly error?: string;
 }
 
+/** Retrato de uma conexão do Open Finance na sincronização (para avisar da renovação do consentimento). */
+export interface ConnectionSnapshot {
+  readonly id: string;
+  readonly institutionName: string;
+  readonly status: 'active' | 'error' | 'expired';
+  readonly consentExpiresAt?: Date;
+}
+
 export interface SyncRun {
   readonly id: string;
   readonly startedAt: Date;
@@ -29,6 +37,8 @@ export interface SyncRun {
   readonly transferPairs: number;
   readonly ambiguousTransfers: number;
   readonly uncategorized: number;
+  /** Conexões vistas nesta sincronização (vazio em registros antigos). */
+  readonly connections: readonly ConnectionSnapshot[];
 }
 
 export abstract class SyncRunRepository {

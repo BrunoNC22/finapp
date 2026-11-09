@@ -21,6 +21,7 @@ export const financeKeys = {
   careerProfile: ['finance', 'career-profile'] as const,
   opportunities: ['finance', 'opportunities'] as const,
   analysisReminder: ['finance', 'analysis-reminder'] as const,
+  connections: ['finance', 'connections'] as const,
 };
 
 export function useCategories(): CategoryDirectory {

@@ -16,6 +16,7 @@ import {
 } from '../../lib/charts';
 import { formatCents, formatDate, formatMonth } from '../../lib/format';
 import { addMonths, currentMonth, formatMonthLong, isMonth, type Month } from '../../lib/months';
+import { ConsentBanner } from '../accounts/Connections';
 import { Amount } from '../shared/Amount';
 import { MonthPicker } from '../shared/MonthPicker';
 import { QueryState } from '../shared/QueryState';
@@ -41,6 +42,7 @@ export function DashboardPage() {
         <h1 id="dashboard-title">Painel</h1>
         <MonthPicker month={month} latest={latest} onChange={(m) => setParams({ mes: m })} />
       </header>
+      <ConsentBanner />
       <AnalysisReminder />
       <QueryState isPending={report.isPending} error={report.error} onRetry={() => void report.refetch()} skeletons={4}>
         {report.data && <Dashboard report={report.data} categories={categories} month={month} />}

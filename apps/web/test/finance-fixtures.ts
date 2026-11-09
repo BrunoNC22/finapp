@@ -3,6 +3,7 @@ import type {
   AnalysisReminderDto,
   CareerProfileDto,
   CategoryDto,
+  ConnectionsHealthDto,
   CreateIncomeSourceCommand,
   CreateOpportunityCommand,
   GoalCommand,
@@ -562,6 +563,24 @@ export class FakeFinanceApi implements FinanceApi {
   async deleteOpportunity(id: string) {
     this.calls.push(`delete-opportunity:${id}`);
     this.opportunityList = this.opportunityList.filter((o) => o.id !== id);
+  }
+  // ---------------------------------------------------------------- conexões
+  connectionsHealth: ConnectionsHealthDto = {
+    checkedAt: '2026-11-09T06:00:00.000Z',
+    worst: 'ok',
+    connections: [
+      {
+        id: 'c1',
+        institutionName: 'Banco Aurora',
+        status: 'active',
+        consentExpiresAt: '2027-11-08T00:00:00.000Z',
+        alert: 'ok',
+        daysLeft: 364,
+      },
+    ],
+  };
+  async connections() {
+    return this.connectionsHealth;
   }
   // ---------------------------------------------------------------- rotina mensal
   reminder: AnalysisReminderDto = { month: '2026-10', pending: true };

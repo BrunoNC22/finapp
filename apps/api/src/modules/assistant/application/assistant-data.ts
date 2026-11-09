@@ -27,4 +27,6 @@ export abstract class AssistantData {
   abstract profile(): Promise<Json>;
   /** Oportunidades de renda acompanhadas; `abertas` = nem fechadas, nem perdidas. */
   abstract opportunities(onlyOpen: boolean): Promise<Json>;
+  /** Conexões do Open Finance e quando cada autorização expira. */
+  abstract connections(): Promise<Json>;
 }

@@ -63,6 +63,21 @@ docker compose exec -T api node dist/cli.js analise-mensal 2026-10  # um mês es
 O Painel lembra da análise do último mês fechado até ela ser registrada. A skill de análise marca sozinha
 (`node dist/cli.js analise-feita [AAAA-MM]`); no app, dá para marcar "Já fiz" ou "Pular este mês".
 
+## Renovar o consentimento do Open Finance
+
+A autorização de leitura de cada instituição vale até 12 meses. O finapp avisa no Painel com 30 dias de antecedência e
+insiste com 7. A tela **Contas → Conexões Open Finance** mostra a validade de cada uma. A mesma informação aparece no
+`/health` (só o nível e os dias, sem nomes) e na ferramenta MCP `conexoes_open_finance`.
+
+Para renovar:
+
+1. Entre no [Meu Pluggy](https://meu.pluggy.ai) e abra a conexão da instituição.
+2. Autorize de novo.
+3. No finapp, **Contas → Sincronizar agora**. O aviso some depois dessa sincronização.
+
+Se a renovação criar uma conexão **nova** (outro ID de item no painel da Pluggy), troque o ID em `PLUGGY_ITEM_IDS` e
+reinicie a API. Confira na primeira renovação e registre aqui o que aconteceu.
+
 ## Depois de reiniciar a máquina
 
 ```sh

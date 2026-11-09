@@ -1,3 +1,4 @@
+import { ConnectionsHealthSchema } from '@finapp/contracts';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -74,6 +75,14 @@ describe('sync endpoints (demo provider, real MongoDB)', () => {
     const startedAt = runs.map((r: { startedAt: string }) => r.startedAt);
     expect([...startedAt].sort().reverse()).toEqual(startedAt);
     expect(runs[0].accounts.every((a: { created: number }) => a.created === 0)).toBe(true);
+  });
+
+  it('GET /connections tells when each Open Finance authorization expires', async () => {
+    await app.inject({ method: 'POST', url: '/sync' });
+    const body = ConnectionsHealthSchema.parse((await app.inject({ method: 'GET', url: '/connections' })).json());
+    expect(body.worst).toBe('ok');
+    expect(body.connections.length).toBeGreaterThan(0);
+    expect(body.connections.every((c) => c.alert === 'ok' && (c.daysLeft ?? 0) > 30)).toBe(true);
   });
 
   it('POST /sync with { full: true } revisits the whole history and still creates nothing new; bad bodies are 400', async () => {

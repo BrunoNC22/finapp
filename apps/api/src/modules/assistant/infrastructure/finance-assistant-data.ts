@@ -5,6 +5,7 @@ import type { CareerProfileRepository, OpportunityRepository } from '../../caree
 import type { AccountRepository } from '../../ledger/application/ports/account-repository.js';
 import type { CategoryRepository } from '../../ledger/application/ports/category-repository.js';
 import type { TransactionQueries } from '../../ledger/application/ports/transaction-queries.js';
+import type { GetConnectionsHealth } from '../../ledger/application/use-cases/connections.js';
 import type { GetInstallmentPurchases } from '../../ledger/application/use-cases/ledger-commands.js';
 import type { GetMonthlyReport } from '../../ledger/application/use-cases/monthly-report.js';
 import type { GoalRepository } from '../../planning/application/ports/goal-ports.js';
@@ -43,6 +44,7 @@ export interface FinanceAssistantDeps {
   readonly requiredIncome: GetRequiredIncome;
   readonly profiles: CareerProfileRepository;
   readonly opportunitiesRepo: OpportunityRepository;
+  readonly connectionsHealth: GetConnectionsHealth;
 }
 
 /** Monta as respostas do assistente a partir dos casos de uso do ledger e do planejamento. */
@@ -323,6 +325,22 @@ export class FinanceAssistantData extends AssistantData {
       formacao: p.education,
       links: p.links,
       curriculo_markdown: p.resumeMarkdown,
+    };
+  }
+
+  async connections(): Promise<Json> {
+    const h = await this.deps.connectionsHealth.execute();
+    return {
+      verificado_em: h.checkedAt?.toISOString() ?? null,
+      pior_alerta: h.worst,
+      regra: 'aviso com 30 dias, urgente com 7; renova-se no Meu Pluggy (meu.pluggy.ai)',
+      conexoes: h.connections.map((c) => ({
+        instituicao: c.institutionName,
+        situacao: c.status,
+        autorizacao_ate: c.consentExpiresAt?.toISOString().slice(0, 10) ?? null,
+        dias_restantes: c.daysLeft ?? null,
+        alerta: c.alert,
+      })),
     };
   }
 

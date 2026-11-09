@@ -82,7 +82,8 @@ export class SyncAccounts {
     const results: SyncAccountResult[] = [];
     let earliestTouched: LocalDate | undefined;
 
-    for (const connection of await this.deps.provider.listConnections()) {
+    const connections = await this.deps.provider.listConnections();
+    for (const connection of connections) {
       let providerAccounts: ProviderAccount[];
       try {
         providerAccounts = await this.deps.provider.listAccounts(connection.id);
@@ -133,6 +134,12 @@ export class SyncAccounts {
       transferPairs: post.pairs,
       ambiguousTransfers: post.ambiguous,
       uncategorized: post.uncategorized,
+      connections: connections.map((c) => ({
+        id: c.id,
+        institutionName: c.institutionName,
+        status: c.status,
+        ...(c.consentExpiresAt ? { consentExpiresAt: c.consentExpiresAt } : {}),
+      })),
     };
     await this.deps.runs.save(run);
     return run;

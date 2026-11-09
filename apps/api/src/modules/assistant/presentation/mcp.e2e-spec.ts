@@ -125,7 +125,7 @@ describe('MCP over HTTP (demo ledger, real MongoDB)', () => {
     expect(init.statusCode).toBe(200);
     expect(init.json().result.serverInfo.name).toBe('finapp');
     const list = await rpc('tools/list', {});
-    expect(list.json().result.tools).toHaveLength(10);
+    expect(list.json().result.tools).toHaveLength(11);
   });
 
   it('answers with the real data, in reais, without documents', async () => {
@@ -145,6 +145,10 @@ describe('MCP over HTTP (demo ledger, real MongoDB)', () => {
     const income = await tool('renda_e_cenarios', { meses: 6 });
     expect(income.fontes[0]).toMatchObject({ nome: 'Bolsa de pesquisa', risco: 'low' });
     expect(income.projecao[0].meses).toHaveLength(6);
+
+    const connections = await tool('conexoes_open_finance');
+    expect(connections.pior_alerta).toBe('ok');
+    expect(connections.conexoes[0]).toMatchObject({ situacao: 'active', alerta: 'ok' });
 
     for (const name of ['gastos_por_categoria', 'compromissos_futuros', 'recorrencias', 'oportunidades'])
       await tool(name);

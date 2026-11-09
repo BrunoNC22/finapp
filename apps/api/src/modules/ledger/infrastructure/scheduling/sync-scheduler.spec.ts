@@ -37,6 +37,7 @@ class SpySync {
 }
 
 const run = (startedAt: Date): SyncRun => ({
+  connections: [],
   id: String(startedAt.getTime()),
   startedAt,
   finishedAt: startedAt,

@@ -22,6 +22,7 @@ describe('finapp MCP server', () => {
     expect(tools.map((t) => t.name).sort()).toEqual([
       'analise_mensal',
       'compromissos_futuros',
+      'conexoes_open_finance',
       'gastos_por_categoria',
       'listar_transacoes',
       'metas_e_viabilidade',

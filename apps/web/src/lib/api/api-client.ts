@@ -7,6 +7,7 @@ import {
   type CareerProfileDto,
   CareerProfileSchema,
   CategorySchema,
+  ConnectionsHealthSchema,
   type CreateIncomeSourceCommand,
   type CreateOpportunityCommand,
   type GoalCommand,
@@ -222,6 +223,9 @@ export class ApiClient implements AuthApi, FinanceApi {
   }
   async deleteOpportunity(id: string) {
     await this.request('DELETE', `/career/opportunities/${encodeURIComponent(id)}`);
+  }
+  connections() {
+    return this.request('GET', '/connections', ConnectionsHealthSchema);
   }
   analysisReminder() {
     return this.request('GET', '/routine/analysis', AnalysisReminderSchema);

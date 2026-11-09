@@ -113,10 +113,24 @@ describe('MongoDB ledger adapters', () => {
       transferPairs: 0,
       ambiguousTransfers: 0,
       uncategorized: 0,
+      connections: [],
     };
+    const consent = new Date('2027-11-01T00:00:00Z');
     await runs.save({ id: 'old', startedAt: new Date('2026-01-01'), ...base });
-    await runs.save({ id: 'new', startedAt: new Date('2026-02-01'), ...base });
-    expect((await runs.findRecent(5)).map((r) => r.id)).toEqual(['new', 'old']);
+    await runs.save({
+      id: 'new',
+      startedAt: new Date('2026-02-01'),
+      ...base,
+      connections: [{ id: 'c1', institutionName: 'Banco', status: 'active', consentExpiresAt: consent }],
+    });
+    // Registro de antes do retrato das conexões.
+    await db
+      .collection('sync_runs')
+      .insertOne({ _id: 'legacy' as never, ...base, connections: undefined, startedAt: new Date('2025-12-01') });
+    const recent = await runs.findRecent(5);
+    expect(recent.map((r) => r.id)).toEqual(['new', 'old', 'legacy']);
+    expect(recent[0]?.connections[0]?.consentExpiresAt).toEqual(consent);
+    expect(recent[2]?.connections).toEqual([]);
 
     const raw = new MongoRawPayloadStore(db);
     await raw.putMany([{ transactionId: 't1', raw: { a: 1 } }]);

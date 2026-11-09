@@ -201,6 +201,24 @@ export const SyncRunSchema = z.object({
 });
 export type SyncRunDto = z.infer<typeof SyncRunSchema>;
 
+/** Consentimento do Open Finance: avisa com 30 dias (aviso) e 7 dias (urgente). */
+export const ConsentAlertSchema = z.enum(['ok', 'sem_data', 'aviso', 'urgente', 'erro', 'expirada']);
+export const ConnectionsHealthSchema = z.object({
+  checkedAt: z.iso.datetime().optional(),
+  worst: ConsentAlertSchema,
+  connections: z.array(
+    z.object({
+      id: z.string(),
+      institutionName: z.string(),
+      status: z.enum(['active', 'error', 'expired']),
+      consentExpiresAt: z.iso.datetime().optional(),
+      alert: ConsentAlertSchema,
+      daysLeft: z.number().int().optional(),
+    }),
+  ),
+});
+export type ConnectionsHealthDto = z.infer<typeof ConnectionsHealthSchema>;
+
 // ------------------------------------------------------------------ relatórios
 export const RecurringSchema = z.object({
   key: z.string(),

@@ -5,6 +5,7 @@ import { IdentityModule } from '../identity/identity.module.js';
 import { AccountRepository } from '../ledger/application/ports/account-repository.js';
 import { CategoryRepository } from '../ledger/application/ports/category-repository.js';
 import { TransactionQueries } from '../ledger/application/ports/transaction-queries.js';
+import { GetConnectionsHealth } from '../ledger/application/use-cases/connections.js';
 import { GetInstallmentPurchases } from '../ledger/application/use-cases/ledger-commands.js';
 import { GetMonthlyReport } from '../ledger/application/use-cases/monthly-report.js';
 import { LedgerModule } from '../ledger/ledger.module.js';
@@ -37,6 +38,7 @@ import { McpController } from './presentation/mcp.controller.js';
         requiredIncome: GetRequiredIncome,
         profiles: CareerProfileRepository,
         opportunitiesRepo: OpportunityRepository,
+        connectionsHealth: GetConnectionsHealth,
       ) =>
         new FinanceAssistantData({
           report,
@@ -51,6 +53,7 @@ import { McpController } from './presentation/mcp.controller.js';
           requiredIncome,
           profiles,
           opportunitiesRepo,
+          connectionsHealth,
         }),
       inject: [
         GetMonthlyReport,
@@ -65,6 +68,7 @@ import { McpController } from './presentation/mcp.controller.js';
         GetRequiredIncome,
         CareerProfileRepository,
         OpportunityRepository,
+        GetConnectionsHealth,
       ],
     },
   ],

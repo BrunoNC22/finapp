@@ -20,9 +20,10 @@ describe('monthlyAnalysisPack', () => {
         ['income', 12],
         ['goals', undefined],
         ['opportunities', true],
+        ['connections'],
       ]),
     );
-    expect(data.calls).toHaveLength(10);
+    expect(data.calls).toHaveLength(11);
     expect(Object.keys(pack)).toEqual([
       'mes',
       'mes_anterior',
@@ -36,6 +37,7 @@ describe('monthlyAnalysisPack', () => {
       'renda_e_cenarios',
       'metas_e_viabilidade',
       'oportunidades_abertas',
+      'conexoes_open_finance',
     ]);
   });
 

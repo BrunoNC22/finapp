@@ -8,6 +8,7 @@ import { formatCents, formatDateTime } from '../../lib/format';
 import { Amount } from '../shared/Amount';
 import { QueryState } from '../shared/QueryState';
 import { financeKeys, useAccounts } from '../shared/queries';
+import { Connections } from './Connections';
 
 const KIND: Record<AccountDto['kind'], string> = {
   checking: 'Conta corrente',
@@ -76,6 +77,8 @@ export function AccountsPage() {
           ))}
         </div>
       </QueryState>
+
+      <Connections />
 
       <article className="card">
         <h2>Reprocessar histórico</h2>

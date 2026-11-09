@@ -3,6 +3,24 @@ import { StubDatabaseHealth } from '../../../../test/doubles/stub-database-healt
 import { CheckHealth } from './check-health.js';
 
 describe('CheckHealth', () => {
+  it('adds the Open Finance consent level when available, without degrading the status (only the database does)', async () => {
+    const consent = { check: async () => ({ alert: 'urgente' as const, daysLeft: 5 }) };
+    const report = await new CheckHealth(StubDatabaseHealth.up(), { timeoutMs: 2000 }, consent).execute();
+    expect(report).toEqual({
+      status: 'ok',
+      checks: { database: 'up', openFinance: { consent: 'urgente', daysLeft: 5 } },
+    });
+
+    const unknown = { check: async (): Promise<never> => Promise.reject(new Error('sem banco')) };
+    const failing = await new CheckHealth(StubDatabaseHealth.down(), { timeoutMs: 2000 }, unknown).execute();
+    expect(failing.checks.openFinance).toEqual({ consent: 'desconhecido' });
+
+    const absent = { check: async () => undefined };
+    expect((await new CheckHealth(StubDatabaseHealth.up(), { timeoutMs: 2000 }, absent).execute()).checks).toEqual({
+      database: 'up',
+    });
+  });
+
   it('reports ok when the database answers', async () => {
     const report = await new CheckHealth(StubDatabaseHealth.up()).execute();
     expect(report).toEqual({ status: 'ok', checks: { database: 'up' } });

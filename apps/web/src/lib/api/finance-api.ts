@@ -3,6 +3,7 @@ import type {
   AnalysisReminderDto,
   CareerProfileDto,
   CategoryDto,
+  ConnectionsHealthDto,
   CreateIncomeSourceCommand,
   CreateOpportunityCommand,
   GoalCommand,
@@ -60,6 +61,9 @@ export interface FinanceApi {
   createOpportunity(command: CreateOpportunityCommand): Promise<OpportunityDto>;
   updateOpportunity(id: string, command: UpdateOpportunityCommand): Promise<OpportunityDto>;
   deleteOpportunity(id: string): Promise<void>;
+
+  /** Conexões do Open Finance e a validade de cada autorização. */
+  connections(): Promise<ConnectionsHealthDto>;
 
   // Rotina mensal
   analysisReminder(): Promise<AnalysisReminderDto>;

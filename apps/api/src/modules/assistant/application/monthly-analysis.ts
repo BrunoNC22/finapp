@@ -13,24 +13,36 @@ export async function monthlyAnalysisPack(data: AssistantData, month?: string): 
     ? YearMonth.parse(month)
     : YearMonth.parse(String((await data.monthSummary()).mes)).addMonths(-1);
   const previous = target.addMonths(-1);
-  const [resumo, resumoAnterior, grupos, categorias, gastos, compromissos, recorrencias, renda, metas, oportunidades] =
-    await Promise.all([
-      data.monthSummary(target.toString()),
-      data.monthSummary(previous.toString()),
-      data.spendingByCategory(target.toString(), 'grupo'),
-      data.spendingByCategory(target.toString(), 'categoria'),
-      data.transactions({
-        de: target.firstDay().toString(),
-        ate: target.lastDay().toString(),
-        tipo: 'gasto',
-        limite: PACK_TRANSACTIONS,
-      }),
-      data.commitments(),
-      data.recurring(),
-      data.income(12),
-      data.goals(undefined),
-      data.opportunities(true),
-    ]);
+  const [
+    resumo,
+    resumoAnterior,
+    grupos,
+    categorias,
+    gastos,
+    compromissos,
+    recorrencias,
+    renda,
+    metas,
+    oportunidades,
+    conexoes,
+  ] = await Promise.all([
+    data.monthSummary(target.toString()),
+    data.monthSummary(previous.toString()),
+    data.spendingByCategory(target.toString(), 'grupo'),
+    data.spendingByCategory(target.toString(), 'categoria'),
+    data.transactions({
+      de: target.firstDay().toString(),
+      ate: target.lastDay().toString(),
+      tipo: 'gasto',
+      limite: PACK_TRANSACTIONS,
+    }),
+    data.commitments(),
+    data.recurring(),
+    data.income(12),
+    data.goals(undefined),
+    data.opportunities(true),
+    data.connections(),
+  ]);
   return {
     mes: target.toString(),
     mes_anterior: previous.toString(),
@@ -44,5 +56,6 @@ export async function monthlyAnalysisPack(data: AssistantData, month?: string): 
     renda_e_cenarios: renda,
     metas_e_viabilidade: metas,
     oportunidades_abertas: oportunidades,
+    conexoes_open_finance: conexoes,
   };
 }

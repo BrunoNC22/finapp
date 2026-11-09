@@ -18,6 +18,7 @@ import {
   CreateCategorizationRule,
   SeedDefaultCategorization,
 } from './application/use-cases/categorization.js';
+import { GetConnectionsHealth } from './application/use-cases/connections.js';
 import { GetAvailableBalance, GetCostOfLiving } from './application/use-cases/cost-of-living.js';
 import {
   ClassifyTransactionManually,
@@ -53,7 +54,7 @@ import {
   TransactionsController,
 } from './presentation/ledger.controllers.js';
 import { ReportsController } from './presentation/reports.controller.js';
-import { SyncController } from './presentation/sync.controller.js';
+import { ConnectionsController, SyncController } from './presentation/sync.controller.js';
 
 const mongo = <T>(provide: abstract new (...args: never[]) => T, make: (db: Db) => T) => ({
   provide,
@@ -76,6 +77,7 @@ function openFinanceProvider(config: AppConfig, clock: Clock): OpenFinanceProvid
 @Module({
   controllers: [
     SyncController,
+    ConnectionsController,
     AccountsController,
     TransactionsController,
     CategoriesController,
@@ -203,6 +205,11 @@ function openFinanceProvider(config: AppConfig, clock: Clock): OpenFinanceProvid
       inject: [SyncAccounts, SyncRunRepository, Clock, AppConfig],
     },
     {
+      provide: GetConnectionsHealth,
+      useFactory: (runs: SyncRunRepository, clock: Clock) => new GetConnectionsHealth(runs, clock),
+      inject: [SyncRunRepository, Clock],
+    },
+    {
       provide: SeedDefaultCategorization,
       useFactory: (categories: CategoryRepository, rules: CategorizationRuleRepository) =>
         new SeedDefaultCategorization(categories, rules),
@@ -221,6 +228,7 @@ function openFinanceProvider(config: AppConfig, clock: Clock): OpenFinanceProvid
     GetInstallmentPurchases,
     TransactionQueries,
     SyncAccounts,
+    GetConnectionsHealth,
   ],
 })
 export class LedgerModule implements OnApplicationBootstrap, OnApplicationShutdown {

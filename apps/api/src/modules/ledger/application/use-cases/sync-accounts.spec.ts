@@ -85,6 +85,13 @@ describe('SyncAccounts', () => {
       expect(await env.runs.findRecent(1)).toEqual([run]);
     });
 
+    it('records each connection and when its consent expires, for the renewal warning', async () => {
+      const run = await env.sync.execute();
+      expect(run.connections.length).toBeGreaterThan(0);
+      expect(run.connections[0]).toMatchObject({ status: 'active', consentExpiresAt: expect.any(Date) });
+      expect(run.connections[0]?.institutionName).toBeTruthy();
+    });
+
     it('is idempotent: syncing again changes nothing', async () => {
       await env.sync.execute();
       const all = async () =>

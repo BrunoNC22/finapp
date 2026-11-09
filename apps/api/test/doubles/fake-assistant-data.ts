@@ -40,4 +40,7 @@ export class FakeAssistantData extends AssistantData {
   async opportunities(onlyOpen: boolean) {
     return this.record('opportunities', onlyOpen);
   }
+  async connections() {
+    return this.record('connections');
+  }
 }

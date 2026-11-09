@@ -44,6 +44,19 @@ export function createFinappMcpServer(data: AssistantData): McpServer {
   );
 
   server.registerTool(
+    'conexoes_open_finance',
+    {
+      title: 'Conexões do Open Finance',
+      description:
+        'Cada instituição conectada, a situação da conexão e até quando vale a autorização de leitura (consentimento, ' +
+        'até ~12 meses). Alerta "aviso" com 30 dias e "urgente" com 7: a renovação é feita no Meu Pluggy.',
+      inputSchema: {},
+      annotations: readOnly,
+    },
+    async () => result(await data.connections()),
+  );
+
+  server.registerTool(
     'resumo_do_mes',
     {
       title: 'Resumo financeiro do mês',

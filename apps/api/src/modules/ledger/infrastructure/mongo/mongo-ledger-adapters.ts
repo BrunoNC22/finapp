@@ -180,10 +180,12 @@ export class MongoSyncRunRepository extends SyncRunRepository {
 
   async findRecent(limit: number): Promise<SyncRun[]> {
     const docs = await this.collection.find().sort({ startedAt: -1 }).limit(limit).toArray();
-    return docs.map(({ _id, accounts, ...rest }) => ({
+    return docs.map(({ _id, accounts, connections, ...rest }) => ({
       id: _id,
       ...rest,
       accounts: accounts.map((a: SyncAccountResult) => ({ ...a })),
+      // Registros anteriores ao retrato das conexões não têm o campo.
+      connections: (connections ?? []).map((c) => ({ ...c })),
     }));
   }
 }
