@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
 import { AppConfig } from '../../config/app-config.js';
+import { safeUrl } from './safe-url.js';
 
 /**
  * Campos que NUNCA podem aparecer nos logs: credenciais e qualquer dado financeiro.
@@ -34,12 +35,12 @@ export const REDACTED_PATHS = [
           redact: { paths: REDACTED_PATHS, censor: '[redacted]' },
           // Health é chamado periodicamente pelo Docker: não polui o log.
           autoLogging: { ignore: (req) => req.url === '/health' },
-          // Só método, URL e status. Nunca corpo de requisição ou resposta.
+          // Só método, caminho (com os nomes dos parâmetros, sem valores) e status. Nunca corpo.
           serializers: {
             req: (req: { method: string; url: string; id: unknown }) => ({
               id: req.id,
               method: req.method,
-              url: req.url,
+              url: safeUrl(req.url),
             }),
             res: (res: { statusCode: number }) => ({ statusCode: res.statusCode }),
           },

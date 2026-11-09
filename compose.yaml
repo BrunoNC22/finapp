@@ -1,7 +1,15 @@
 name: finapp
 
+# Logs no disco do Docker (fora de qualquer repositório), com rotação: até 3 arquivos de 10 MB por serviço.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   mongo:
+    logging: *logging
     # Versão EXATA: versões 8.0 mais novas se recusam a iniciar em kernels Linux >= 6.19
     # (MongoDB SERVER-121912, TCMalloc/rseq). Não atualizar sem checar esse ticket.
     image: mongo:8.0.34
@@ -23,6 +31,7 @@ services:
     # Sem "ports": o Mongo não é acessível fora da rede interna do compose.
 
   api:
+    logging: *logging
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -48,6 +57,7 @@ services:
     # Sem "ports": a exposição (só em 127.0.0.1 + tailscale serve) vem com a autenticação (#16/#21).
 
   web:
+    logging: *logging
     build:
       context: .
       dockerfile: apps/web/Dockerfile
