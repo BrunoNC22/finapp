@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Build a partir da raiz do monorepo: docker build -f apps/web/Dockerfile .
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 WORKDIR /repo
 RUN corepack enable
@@ -12,6 +12,6 @@ COPY packages/contracts packages/contracts
 COPY apps/web apps/web
 RUN pnpm --filter @finapp/contracts build && pnpm --filter web build
 
-FROM caddy:2.10-alpine
+FROM caddy:2.11-alpine
 COPY apps/web/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /repo/apps/web/dist /srv
