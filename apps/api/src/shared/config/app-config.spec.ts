@@ -32,6 +32,22 @@ describe('AppConfig.fromEnv', () => {
     expect(() => AppConfig.fromEnv({ MONGO_URL: 'postgres://x' })).toThrow(InvalidConfigError);
   });
 
+  it('demo mode: a demo password turns it on, only with the demo provider and with a minimum length', () => {
+    expect(AppConfig.fromEnv(validEnv).demo).toBeUndefined();
+    expect(AppConfig.fromEnv({ ...validEnv, DEMO_PASSWORD: 'demo-finapp' }).demo).toEqual({ password: 'demo-finapp' });
+    expect(() => AppConfig.fromEnv({ ...validEnv, DEMO_PASSWORD: 'curta' })).toThrow(InvalidConfigError);
+    expect(() =>
+      AppConfig.fromEnv({
+        ...validEnv,
+        DEMO_PASSWORD: 'demo-finapp',
+        OPEN_FINANCE_PROVIDER: 'pluggy',
+        PLUGGY_CLIENT_ID: 'id',
+        PLUGGY_CLIENT_SECRET: 'segredo',
+        PLUGGY_ITEM_IDS: 'item',
+      }),
+    ).toThrow(/DEMO_PASSWORD/);
+  });
+
   it('rejects an unknown open finance provider', () => {
     expect(() => AppConfig.fromEnv({ ...validEnv, OPEN_FINANCE_PROVIDER: 'other' })).toThrow(InvalidConfigError);
   });

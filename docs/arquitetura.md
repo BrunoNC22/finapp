@@ -11,13 +11,15 @@ Decisões individuais estão registradas em [`docs/adr/`](adr/README.md).
 
 ## Núcleos de domínio
 
-| Módulo     | Responsabilidade                                                                                                                                                                                                                                                  |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ledger`   | Contas, transações, faturas, parcelas, categorias e regras de categorização. Detecta **transferências internas** entre contas do próprio usuário (inclusive pagamento de fatura), para que o mesmo dinheiro não seja contado como renda ou gasto mais de uma vez. |
-| `income`   | Fontes de renda com valor, início, fim e risco. Monta cenários (garantido, provável, otimista).                                                                                                                                                                   |
-| `goals`    | Metas de **compra** (preço, entrada, parcelas, juros e custos recorrentes associados) e de **estilo de vida** (itens de custo mensal). Calcula viabilidade e prazo contra cada cenário de renda.                                                                  |
-| `advisor`  | Perfil profissional e ferramentas de consulta expostas ao assistente de IA.                                                                                                                                                                                       |
-| `identity` | Autenticação do (único) usuário da instância.                                                                                                                                                                                                                     |
+| Módulo      | Responsabilidade                                                                                                                                                                                                                                                  |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ledger`    | Contas, transações, faturas, parcelas, categorias e regras de categorização. Detecta **transferências internas** entre contas do próprio usuário (inclusive pagamento de fatura), para que o mesmo dinheiro não seja contado como renda ou gasto mais de uma vez. |
+| `planning`  | **Renda**: fontes com valor, período e risco, e os cenários piso, provável e otimista. **Metas**: compras (entrada, parcelas, juros, custos recorrentes) e estilo de vida; viabilidade em cada cenário e a renda necessária.                                      |
+| `career`    | Perfil profissional e quadro de oportunidades de renda.                                                                                                                                                                                                           |
+| `routine`   | Rotina mensal: lembra da análise do último mês fechado até ela ser registrada.                                                                                                                                                                                    |
+| `assistant` | Servidor MCP somente leitura para o Claude Code e o pacote da análise mensal.                                                                                                                                                                                     |
+| `identity`  | Autenticação do (único) usuário da instância: senha, passkey, sessões e tokens do MCP.                                                                                                                                                                            |
+| `demo`      | Modo demonstração: prepara uma instância vazia com uma pessoa fictícia.                                                                                                                                                                                           |
 
 ## Camadas (arquitetura hexagonal)
 
@@ -93,7 +95,11 @@ React + Vite + TanStack Query, distribuído como **PWA**. Os gráficos usam **Ch
 
 ## Modo demo
 
-O `DemoOpenFinanceProvider` implementa a mesma porta do provider real e gera uma pessoa fictícia com histórico, parcelas e metas. Ele é usado nos testes, nos prints do README e por quem quiser experimentar o app sem conectar banco nenhum.
+O `DemoOpenFinanceProvider` implementa a mesma porta do provider real e gera uma pessoa fictícia com 12 meses de
+histórico, parcelas e os casos difíceis de conciliação. Ele é usado nos testes e no **modo demonstração**
+(`compose.demo.yaml`, `corepack pnpm demo`): com `DEMO_PASSWORD` definido, o módulo `demo` cria o acesso, sincroniza e
+cadastra renda, metas e carreira fictícias pelos mesmos casos de uso da tela, e a tela de login mostra a senha. A
+configuração recusa `DEMO_PASSWORD` junto com o provider real. Os prints do README saem desse modo.
 
 ## Composição e convenções da API
 

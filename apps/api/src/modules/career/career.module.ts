@@ -44,6 +44,6 @@ import { CareerController } from './presentation/career.controller.js';
       inject: [OpportunityRepository],
     },
   ],
-  exports: [CareerProfileRepository, OpportunityRepository],
+  exports: [CareerProfileRepository, OpportunityRepository, SaveCareerProfile, CreateOpportunity],
 })
 export class CareerModule {}

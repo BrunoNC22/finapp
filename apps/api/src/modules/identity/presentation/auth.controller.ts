@@ -14,6 +14,7 @@ import {
   SetupCommandSchema,
 } from '@finapp/contracts';
 import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, Req } from '@nestjs/common';
+import { AppConfig } from '../../../shared/config/app-config.js';
 import { Public } from '../../../shared/presentation/public.decorator.js';
 import { ZodPipe } from '../../../shared/presentation/zod-pipe.js';
 import { AuthService } from '../application/use-cases/auth.js';
@@ -24,12 +25,16 @@ const current = (request: AuthenticatedRequest): Session => request.session as S
 
 @Controller('auth')
 export class AuthController {
-  constructor(@Inject(AuthService) private readonly auth: AuthService) {}
+  constructor(
+    @Inject(AuthService) private readonly auth: AuthService,
+    @Inject(AppConfig) private readonly config: AppConfig,
+  ) {}
 
   @Public()
   @Get('status')
-  status(): Promise<AuthStatusDto> {
-    return this.auth.status();
+  async status(): Promise<AuthStatusDto> {
+    const status = await this.auth.status();
+    return this.config.demo ? { ...status, demoPassword: this.config.demo.password } : status;
   }
 
   /** Primeiro acesso ou "esqueci a senha", com o código gerado no terminal do servidor. */

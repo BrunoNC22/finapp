@@ -7,6 +7,26 @@ import { LoginPage } from './LoginPage';
 const user = () => userEvent.setup();
 
 describe('LoginPage (bank-app style)', () => {
+  it('demo mode: shows the demo password and enters with one tap', async () => {
+    const auth = new FakeAuthApi();
+    auth.statusValue = { ownerExists: true, passkeys: 0, demoPassword: 'senha-do-demo' };
+    auth.correctPassword = 'senha-do-demo';
+    const { session } = renderWithServices(<LoginPage />, { auth });
+
+    const note = await screen.findByRole('note', { name: 'Modo demonstração' });
+    expect(note).toHaveTextContent('dados fictícios');
+    expect(note).toHaveTextContent('senha-do-demo');
+    await user().click(screen.getByRole('button', { name: 'Entrar na demonstração' }));
+    await waitFor(() => expect(session.getState().status).toBe('signed-in'));
+    expect(auth.calls).toContain('login');
+  });
+
+  it('a real instance never shows a demo note', async () => {
+    renderWithServices(<LoginPage />);
+    expect(await screen.findByRole('heading', { name: 'Entrar no finapp' })).toBeInTheDocument();
+    expect(screen.queryByRole('note', { name: 'Modo demonstração' })).toBeNull();
+  });
+
   it('first access: asks the server code and a new password, then signs in', async () => {
     const auth = new FakeAuthApi();
     auth.statusValue = { ownerExists: false, passkeys: 0 };

@@ -88,6 +88,26 @@ export function LoginPage({ expired = false }: { expired?: boolean }) {
         </h1>
         {expired && effectiveMode === 'login' && <p className="hint">Sua sessão foi encerrada por segurança.</p>}
 
+        {status.data?.demoPassword && effectiveMode === 'login' && (
+          <section className="notice demo-note" role="note" aria-label="Modo demonstração">
+            <p>
+              <strong>Modo demonstração</strong>: dados fictícios, gerados na hora. Senha:{' '}
+              <code>{status.data.demoPassword}</code>
+            </p>
+            <button
+              type="button"
+              className="primary"
+              disabled={busy}
+              onClick={() => {
+                const demoPassword = status.data?.demoPassword ?? '';
+                void run(() => auth.login(demoPassword));
+              }}
+            >
+              Entrar na demonstração
+            </button>
+          </section>
+        )}
+
         {effectiveMode !== 'login' && (
           <>
             <p className="hint">

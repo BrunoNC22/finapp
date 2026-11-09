@@ -1070,3 +1070,13 @@ label.check {
   font-size: 0.9em;
   white-space: nowrap;
 }
+
+/* ===================================================================== modo demonstração (#29) */
+.demo-note {
+  display: grid;
+  gap: var(--space-2);
+  border-left: 4px solid var(--accent);
+}
+.demo-note p {
+  margin: 0;
+}

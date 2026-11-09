@@ -43,6 +43,8 @@ const schema = z.object({
   PLUGGY_CLIENT_ID: optional(z.string().optional()),
   PLUGGY_CLIENT_SECRET: optional(z.string().optional()),
   PLUGGY_ITEM_IDS: optional(z.string().optional()),
+  /** Modo demonstração: cria o acesso com esta senha e preenche o app com dados fictícios (só com o provider demo). */
+  DEMO_PASSWORD: optional(z.string().min(8).max(128).optional()),
 });
 
 /**
@@ -62,6 +64,8 @@ export class AppConfig {
     readonly session: { readonly idleMinutes: number; readonly maxHours: number },
     /** WebAuthn (digital): domínio e origem exatos de onde o app é aberto. */
     readonly webauthn: { readonly rpId: string; readonly origin: string },
+    /** Modo demonstração (README): senha do acesso, mostrada na tela de login. */
+    readonly demo: { readonly password: string } | undefined,
   ) {
     Object.freeze(this.http);
     Object.freeze(this.mongo);
@@ -69,6 +73,7 @@ export class AppConfig {
     Object.freeze(this.sync);
     Object.freeze(this.session);
     Object.freeze(this.webauthn);
+    if (this.demo) Object.freeze(this.demo);
     Object.freeze(this);
   }
 
@@ -107,6 +112,7 @@ export class AppConfig {
       { intervalHours: e.SYNC_INTERVAL_HOURS },
       { idleMinutes: e.SESSION_IDLE_MINUTES, maxHours: e.SESSION_MAX_HOURS },
       { rpId: e.WEBAUTHN_RP_ID, origin: e.WEBAUTHN_ORIGIN },
+      e.DEMO_PASSWORD ? { password: e.DEMO_PASSWORD } : undefined,
     );
   }
 
@@ -114,6 +120,11 @@ export class AppConfig {
     const present = (key: string) => (env[key] ?? '') !== '';
     const problems: string[] = [];
     if (!present('MONGO_URL')) problems.push('MONGO_URL: obrigatória');
+    if (present('DEMO_PASSWORD') && env.OPEN_FINANCE_PROVIDER === 'pluggy') {
+      problems.push(
+        'DEMO_PASSWORD: só com OPEN_FINANCE_PROVIDER=demo (o modo demonstração nunca roda com contas reais)',
+      );
+    }
     if (env.OPEN_FINANCE_PROVIDER === 'pluggy') {
       for (const key of ['PLUGGY_CLIENT_ID', 'PLUGGY_CLIENT_SECRET', 'PLUGGY_ITEM_IDS']) {
         if (!present(key)) problems.push(`${key}: obrigatória quando OPEN_FINANCE_PROVIDER=pluggy`);

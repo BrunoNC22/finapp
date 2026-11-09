@@ -1,0 +1,47 @@
+# Modo demonstração: o app completo com dados FICTÍCIOS, para experimentar sem configurar nada.
+#   corepack pnpm demo        → sobe em http://localhost:8090 (a senha aparece na tela de login)
+#   corepack pnpm demo:down   → desliga e apaga tudo
+# Sem cofre, sem Pluggy, sem .env: o banco vive em memória (tmpfs) e some ao desligar.
+name: finapp-demo
+
+services:
+  mongo:
+    # Mesma versão exata da instância (ver compose.yaml).
+    image: mongo:8.0.34
+    tmpfs: [/data/db]
+    networks: [data]
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: finapp-api:demo
+    depends_on: [mongo]
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: info
+      MONGO_URL: mongodb://mongo:27017
+      MONGO_DB_NAME: finapp-demo
+      OPEN_FINANCE_PROVIDER: demo
+      SYNC_INTERVAL_HOURS: "0"
+      DEMO_PASSWORD: ${FINAPP_DEMO_PASSWORD:-demo-finapp}
+      SESSION_IDLE_MINUTES: "60"
+      WEBAUTHN_RP_ID: localhost
+      WEBAUTHN_ORIGIN: http://localhost:${FINAPP_DEMO_PORT:-8090}
+    networks: [data, web]
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    image: finapp-web:demo
+    depends_on: [api]
+    ports: ["127.0.0.1:${FINAPP_DEMO_PORT:-8090}:80"]
+    networks: [web]
+
+networks:
+  # O banco fica numa rede sem saída; nada aqui precisa da internet.
+  data:
+    internal: true
+  web:
+    internal: false

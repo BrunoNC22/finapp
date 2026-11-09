@@ -263,7 +263,12 @@ export type MonthlyReportQuery = z.infer<typeof MonthlyReportQuerySchema>;
 // ------------------------------------------------------------------ autenticação
 const PasswordSchema = z.string().min(8).max(128);
 
-export const AuthStatusSchema = z.object({ ownerExists: z.boolean(), passkeys: z.number().int() });
+export const AuthStatusSchema = z.object({
+  ownerExists: z.boolean(),
+  passkeys: z.number().int(),
+  /** Só no modo demonstração: a senha de acesso, para quem está experimentando. */
+  demoPassword: z.string().optional(),
+});
 export type AuthStatusDto = z.infer<typeof AuthStatusSchema>;
 
 export const LoginResultSchema = z.object({ token: z.string(), expiresAfterIdleMinutes: z.number().int() });

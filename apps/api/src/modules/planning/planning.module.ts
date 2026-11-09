@@ -87,6 +87,14 @@ import { IncomeController } from './presentation/income.controller.js';
       inject: [IncomeSourceRepository, IncomeLedger, Clock],
     },
   ],
-  exports: [IncomeSourceRepository, GoalRepository, GetIncomeOverview, GetGoalPlan, GetRequiredIncome],
+  exports: [
+    IncomeSourceRepository,
+    GoalRepository,
+    GetIncomeOverview,
+    GetGoalPlan,
+    GetRequiredIncome,
+    CreateIncomeSource,
+    CreateGoal,
+  ],
 })
 export class PlanningModule {}
