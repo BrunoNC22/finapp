@@ -8,6 +8,7 @@ import {
 import { InMemoryTransactionRepository } from '../../../../../test/doubles/in-memory-transaction-repository.js';
 import { SequentialIdGenerator } from '../../../../../test/doubles/sequential-id-generator.js';
 import { LocalDate } from '../../../../shared/kernel/local-date.js';
+import { CategorizationRule } from '../../domain/categorization/categorization-rule.js';
 import { Categorizer } from '../../domain/categorization/categorizer.js';
 import { DEFAULT_CATEGORIES } from '../../domain/categorization/default-taxonomy.js';
 import {
@@ -15,6 +16,8 @@ import {
   CreateCategorizationRule,
   DefaultRuleCannotBeDeletedError,
   DeleteCategorizationRule,
+  InvalidMergeError,
+  MergeCategories,
   PreviewCategorizationRule,
   SeedDefaultCategorization,
   UnknownCategoryError,
@@ -214,6 +217,54 @@ describe('categorization use cases', () => {
       expect((await transactions.findById('t1'))?.category?.source).not.toBe('rule');
       await expect(remove.execute('default-rule-1', period)).rejects.toThrow(DefaultRuleCannotBeDeletedError);
       await expect(remove.execute('nao-existe', period)).rejects.toThrow(UnknownRuleError);
+    });
+  });
+
+  describe('MergeCategories', () => {
+    it('moves transactions (keeping who decided) and rules into the target, then archives the source', async () => {
+      const manual = aTransaction().withId('t1').withDescription('Lanche').on('2024-02-01').build();
+      manual.categorize('alimentacao.delivery', 'manual');
+      const byRule = aTransaction().withId('t2').withDescription('Lanche 2').on('2026-02-01').build();
+      byRule.categorize('alimentacao.delivery', 'rule');
+      const other = aTransaction().withId('t3').withDescription('Mercado').on('2026-02-01').build();
+      other.categorize('alimentacao.mercado', 'rule');
+      await transactions.saveMany([manual, byRule, other]);
+      await rules.save(
+        CategorizationRule.create({
+          id: 'r-delivery',
+          name: 'Lanches',
+          categoryId: 'alimentacao.delivery',
+          priority: 10,
+          enabled: true,
+          descriptionContains: 'lanche',
+        }),
+      );
+
+      const result = await new MergeCategories(categories, rules, transactions).execute(
+        'alimentacao.delivery',
+        'alimentacao.restaurantes',
+      );
+
+      expect(result).toEqual({ transactions: 2, rules: 1 });
+      expect((await transactions.findById('t1'))?.category).toEqual({
+        categoryId: 'alimentacao.restaurantes',
+        source: 'manual',
+      });
+      expect((await transactions.findById('t2'))?.category).toEqual({
+        categoryId: 'alimentacao.restaurantes',
+        source: 'rule',
+      });
+      expect((await transactions.findById('t3'))?.category?.categoryId).toBe('alimentacao.mercado');
+      expect((await rules.findById('r-delivery'))?.props.categoryId).toBe('alimentacao.restaurantes');
+      expect((await categories.findById('alimentacao.delivery'))?.archived).toBe(true);
+    });
+
+    it('refuses merging into itself, a group, or a category of another kind', async () => {
+      const merge = new MergeCategories(categories, rules, transactions);
+      await expect(merge.execute('alimentacao.mercado', 'alimentacao.mercado')).rejects.toThrow(InvalidMergeError);
+      await expect(merge.execute('alimentacao', 'moradia')).rejects.toThrow(InvalidMergeError);
+      await expect(merge.execute('alimentacao.mercado', 'renda.servicos')).rejects.toThrow(InvalidMergeError);
+      await expect(merge.execute('nao-existe', 'alimentacao.mercado')).rejects.toThrow(UnknownCategoryError);
     });
   });
 

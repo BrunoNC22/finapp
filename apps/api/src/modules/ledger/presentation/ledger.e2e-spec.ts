@@ -202,6 +202,20 @@ describe('ledger HTTP API (demo provider, real MongoDB)', () => {
     }
   });
 
+  it('POST /categories/:id/merge moves everything into the target and archives the source', async () => {
+    const extra = CategorySchema.parse(
+      (await send('POST', '/categories', { name: 'Lanches na rua', kind: 'expense', parentId: 'alimentacao' })).json(),
+    );
+    const merged = await send('POST', `/categories/${extra.id}/merge`, { into: 'alimentacao.restaurantes' });
+    expect(merged.statusCode).toBe(200);
+    expect(merged.json()).toEqual({ transactions: 0, rules: 0 });
+    const after = CategorySchema.array().parse((await get('/categories')).json());
+    expect(after.find((c) => c.id === extra.id)?.archived).toBe(true);
+    expect((await send('POST', '/categories/alimentacao.mercado/merge', { into: 'renda.servicos' })).statusCode).toBe(
+      422,
+    );
+  });
+
   it('GET /installments shows purchases and what is still due', async () => {
     const purchases = InstallmentPurchaseSchema.array().parse((await get('/installments')).json());
     expect(purchases.length).toBeGreaterThanOrEqual(3);

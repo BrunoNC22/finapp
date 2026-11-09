@@ -11,6 +11,9 @@ import {
   type CreateRuleCommand,
   CreateRuleCommandSchema,
   type InstallmentPurchaseDto,
+  type MergeCategoryCommand,
+  MergeCategoryCommandSchema,
+  type MergeResultDto,
   type RulePreviewCommand,
   RulePreviewCommandSchema,
   type RulePreviewDto,
@@ -39,6 +42,7 @@ import {
   CategorizeTransactionManually,
   CreateCategorizationRule,
   DeleteCategorizationRule,
+  MergeCategories,
   PreviewCategorizationRule,
   UnknownTransactionError,
   UpdateCategorizationRule,
@@ -129,7 +133,17 @@ export class CategoriesController {
     @Inject(CategoryRepository) private readonly categories: CategoryRepository,
     @Inject(CreateCategory) private readonly create: CreateCategory,
     @Inject(UpdateCategory) private readonly update: UpdateCategory,
+    @Inject(MergeCategories) private readonly merge: MergeCategories,
   ) {}
+
+  @Post(':id/merge')
+  @HttpCode(200)
+  mergeInto(
+    @Param('id') id: string,
+    @Body(new ZodPipe(MergeCategoryCommandSchema)) body: MergeCategoryCommand,
+  ): Promise<MergeResultDto> {
+    return this.merge.execute(id, body.into);
+  }
 
   @Get()
   async list(): Promise<CategoryDto[]> {

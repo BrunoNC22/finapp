@@ -26,6 +26,7 @@ import {
   InstallmentPurchaseSchema,
   type LoginResultDto,
   LoginResultSchema,
+  MergeResultSchema,
   MonthlyReportSchema,
   OpportunitySchema,
   RequiredIncomeSchema,
@@ -163,6 +164,9 @@ export class ApiClient implements AuthApi, FinanceApi {
   }
   deleteRule(id: string) {
     return this.request('DELETE', `/categorization-rules/${encodeURIComponent(id)}`, AffectedSchema);
+  }
+  mergeCategory(id: string, into: string) {
+    return this.request('POST', `/categories/${encodeURIComponent(id)}/merge`, MergeResultSchema, { into });
   }
   createCategory(command: CreateCategoryCommand) {
     return this.request('POST', '/categories', CategorySchema, command);

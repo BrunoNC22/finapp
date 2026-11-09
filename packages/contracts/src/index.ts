@@ -201,6 +201,12 @@ export const UpdateCategoryCommandSchema = z
   .refine((v) => v.name !== undefined || v.archived !== undefined, 'informe name ou archived');
 export type UpdateCategoryCommand = z.infer<typeof UpdateCategoryCommandSchema>;
 
+/** POST /categories/:id/merge: transações e regras vão para `into`, e a categoria de origem é arquivada. */
+export const MergeCategoryCommandSchema = z.object({ into: z.string().min(1) });
+export type MergeCategoryCommand = z.infer<typeof MergeCategoryCommandSchema>;
+export const MergeResultSchema = z.object({ transactions: z.number().int(), rules: z.number().int() });
+export type MergeResultDto = z.infer<typeof MergeResultSchema>;
+
 // ------------------------------------------------------------------ sincronização
 /** POST /sync. `full`: revisita 12 meses (aplica regras melhoradas aos meses antigos). Corpo opcional. */
 export const SyncCommandSchema = z

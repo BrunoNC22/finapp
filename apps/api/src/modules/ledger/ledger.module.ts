@@ -17,6 +17,7 @@ import {
   CategorizeTransactionManually,
   CreateCategorizationRule,
   DeleteCategorizationRule,
+  MergeCategories,
   PreviewCategorizationRule,
   SeedDefaultCategorization,
   UpdateCategorizationRule,
@@ -162,6 +163,12 @@ function openFinanceProvider(config: AppConfig, clock: Clock): OpenFinanceProvid
         OpenFinanceProvider,
         IdGenerator,
       ],
+    },
+    {
+      provide: MergeCategories,
+      useFactory: (c: CategoryRepository, r: CategorizationRuleRepository, t: TransactionRepository) =>
+        new MergeCategories(c, r, t),
+      inject: [CategoryRepository, CategorizationRuleRepository, TransactionRepository],
     },
     {
       provide: PreviewCategorizationRule,

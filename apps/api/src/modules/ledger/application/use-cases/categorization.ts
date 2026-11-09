@@ -1,7 +1,7 @@
 import { NotFoundError } from '../../../../shared/application/errors.js';
 import type { IdGenerator } from '../../../../shared/application/id-generator.js';
 import { DomainError } from '../../../../shared/kernel/domain-error.js';
-import type { LocalDate } from '../../../../shared/kernel/local-date.js';
+import { LocalDate } from '../../../../shared/kernel/local-date.js';
 import { CategorizationRule, type CategorizationRuleProps } from '../../domain/categorization/categorization-rule.js';
 import type { Categorizer } from '../../domain/categorization/categorizer.js';
 import { Category } from '../../domain/categorization/category.js';
@@ -263,5 +263,47 @@ export class CategorizeTransactionManually {
     );
     await this.transactions.saveMany(changed);
     return { alsoApplied: changed.length };
+  }
+}
+
+export class InvalidMergeError extends DomainError {
+  // biome-ignore lint/complexity/noUselessConstructor: torna público o construtor protegido de DomainError
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+/**
+ * Junta duas subcategorias: as transações (de todos os meses) e as regras da origem passam para o destino, mantendo
+ * quem decidiu (uma escolha manual continua manual), e a origem é arquivada.
+ */
+export class MergeCategories {
+  constructor(
+    private readonly categories: CategoryRepository,
+    private readonly rules: CategorizationRuleRepository,
+    private readonly transactions: TransactionRepository,
+  ) {}
+
+  async execute(sourceId: string, targetId: string): Promise<{ transactions: number; rules: number }> {
+    if (sourceId === targetId) throw new InvalidMergeError('escolha outra categoria de destino');
+    const source = await requireActiveCategory(this.categories, sourceId);
+    const target = await requireActiveCategory(this.categories, targetId);
+    if (!source.parentId || !target.parentId) throw new InvalidMergeError('só dá para mesclar subcategorias');
+    if (source.kind !== target.kind) throw new InvalidMergeError('as duas categorias precisam ser do mesmo tipo');
+
+    const all = await this.transactions.findInPeriod({
+      from: LocalDate.of(1990, 1, 1),
+      to: LocalDate.of(2100, 12, 31),
+    });
+    const moved = all.filter((t) => t.category?.categoryId === sourceId);
+    for (const t of moved) t.categorize(targetId, t.category?.source ?? 'manual');
+    await this.transactions.saveMany(moved);
+
+    const rules = (await this.rules.findAll()).filter((r) => r.props.categoryId === sourceId);
+    for (const r of rules) await this.rules.save(CategorizationRule.create({ ...r.props, categoryId: targetId }));
+
+    source.archive();
+    await this.categories.save(source);
+    return { transactions: moved.length, rules: rules.length };
   }
 }

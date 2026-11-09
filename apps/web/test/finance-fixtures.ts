@@ -516,6 +516,11 @@ export class FakeFinanceApi implements FinanceApi {
     this.categoryList = [...this.categoryList, created];
     return created;
   }
+  async mergeCategory(id: string, into: string) {
+    this.calls.push(`merge-category:${id}:${into}`);
+    this.categoryList = this.categoryList.map((c) => (c.id === id ? { ...c, archived: true } : c));
+    return { transactions: 7, rules: 1 };
+  }
   async updateCategory(id: string, command: UpdateCategoryCommand) {
     this.calls.push(`update-category:${id}`);
     this.sent.push(command);

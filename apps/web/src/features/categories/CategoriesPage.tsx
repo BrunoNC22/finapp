@@ -29,7 +29,24 @@ export function CategoriesPage() {
     },
     onError: () => setMessage('Não foi possível salvar a categoria.'),
   });
-  const busy = create.isPending || update.isPending;
+  const merge = useMutation({
+    mutationFn: ({ id, into }: { id: string; into: string }) => finance.mergeCategory(id, into),
+    onSuccess: (r) => {
+      const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+      setMessage(
+        `Mesclada: ${plural(r.transactions, 'transação', 'transações')} e ${plural(r.rules, 'regra', 'regras')} mudaram de categoria.`,
+      );
+      refresh();
+    },
+    onError: () => setMessage('Não foi possível mesclar.'),
+  });
+  const busy = create.isPending || update.isPending || merge.isPending;
+  const sameKind = (c: CategoryDto) =>
+    categories
+      .groups()
+      .filter((g) => g.kind === c.kind)
+      .flatMap((g) => g.children.map((x) => ({ id: x.id, label: `${g.name} › ${x.name}` })))
+      .filter((x) => x.id !== c.id);
 
   return (
     <section className="page" aria-labelledby="categories-title">
@@ -58,6 +75,8 @@ export function CategoriesPage() {
                 busy={busy}
                 onRename={(name) => update.mutate({ id: c.id, name })}
                 onArchive={() => update.mutate({ id: c.id, archived: true })}
+                mergeTargets={sameKind(c)}
+                onMerge={(into) => merge.mutate({ id: c.id, into })}
               />
             ))}
           </ul>
@@ -77,11 +96,15 @@ function CategoryItem({
   busy,
   onRename,
   onArchive,
+  mergeTargets,
+  onMerge,
 }: {
   category: CategoryDto;
   busy: boolean;
   onRename: (name: string) => void;
   onArchive: () => void;
+  mergeTargets: { id: string; label: string }[];
+  onMerge: (into: string) => void;
 }) {
   const [name, setName] = useState(category.name);
   const changed = name.trim() !== '' && name.trim() !== category.name;
@@ -100,6 +123,28 @@ function CategoryItem({
         >
           Arquivar
         </button>
+        <select
+          aria-label={`Mesclar ${category.name} em`}
+          value=""
+          disabled={busy}
+          onChange={(e) => {
+            const target = mergeTargets.find((t) => t.id === e.target.value);
+            if (
+              target &&
+              window.confirm(
+                `Mesclar "${category.name}" em "${target.label}"? As transações e regras mudam de categoria.`,
+              )
+            )
+              onMerge(target.id);
+          }}
+        >
+          <option value="">Mesclar em…</option>
+          {mergeTargets.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.label}
+            </option>
+          ))}
+        </select>
       </div>
     </li>
   );

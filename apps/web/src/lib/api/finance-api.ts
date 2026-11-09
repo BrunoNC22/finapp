@@ -15,6 +15,7 @@ import type {
   IncomeOverviewDto,
   IncomeSourceDto,
   InstallmentPurchaseDto,
+  MergeResultDto,
   MonthlyReportDto,
   OpportunityDto,
   RecordAnalysisCommand,
@@ -47,6 +48,8 @@ export interface FinanceApi {
   deleteRule(id: string): Promise<{ affected: number }>;
   createCategory(command: CreateCategoryCommand): Promise<CategoryDto>;
   updateCategory(id: string, command: UpdateCategoryCommand): Promise<CategoryDto>;
+  /** Junta `id` em `into`: transações e regras mudam de categoria e `id` é arquivada. */
+  mergeCategory(id: string, into: string): Promise<MergeResultDto>;
   installments(): Promise<InstallmentPurchaseDto[]>;
   /** `full`: revisita 12 meses (aplica regras melhoradas aos meses antigos). */
   syncNow(options?: { full?: boolean }): Promise<SyncRunDto>;

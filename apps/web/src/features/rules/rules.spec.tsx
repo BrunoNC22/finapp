@@ -128,4 +128,16 @@ describe('CategoriesPage', () => {
     );
     await waitFor(() => expect(finance.sent.at(-1)).toEqual({ archived: true }));
   });
+  it('merges a category into another of the same kind after confirming', async () => {
+    const finance = new FakeFinanceApi();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderWithServices(<CategoriesPage />, { finance, route: '/categorias' });
+    const select = await screen.findByRole('combobox', { name: 'Mesclar Delivery em' });
+    expect(within(select).queryByRole('option', { name: /Serviços e freelas/ })).toBeNull();
+    await userEvent.setup().selectOptions(select, 'alimentacao.mercado');
+    await waitFor(() => expect(finance.calls).toContain('merge-category:alimentacao.delivery:alimentacao.mercado'));
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Mesclada: 7 transações e 1 regra mudaram de categoria.',
+    );
+  });
 });
