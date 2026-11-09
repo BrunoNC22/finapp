@@ -1,0 +1,55 @@
+# Atualizações semanais, agrupadas para não virar uma enxurrada de PRs. O CI valida cada uma.
+version: 2
+updates:
+  - package-ecosystem: npm # pnpm (lê o pnpm-lock.yaml)
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    groups:
+      producao:
+        dependency-type: production
+        update-types: [minor, patch]
+      desenvolvimento:
+        dependency-type: development
+        update-types: [minor, patch]
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: docker
+    directories: [/apps/api, /apps/web]
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: America/Sao_Paulo
+    groups:
+      imagens:
+        patterns: ["*"]
+    commit-message:
+      prefix: "chore(docker)"
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: America/Sao_Paulo
+    ignore:
+      # Fixado em 8.0.34: versões 8.0 mais novas recusam kernels Linux >= 6.19 (SERVER-121912). Ver compose.yaml.
+      - dependency-name: mongo
+    commit-message:
+      prefix: "chore(docker)"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: America/Sao_Paulo
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "chore(ci)"
