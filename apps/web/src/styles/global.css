@@ -1068,4 +1068,5 @@ label.check {
 .reminder code {
   font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
   font-size: 0.9em;
+  white-space: nowrap;
 }
