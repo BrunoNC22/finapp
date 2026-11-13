@@ -5,11 +5,13 @@ import { SystemClock } from '../../shared/infrastructure/system-clock.js';
 import { AnalysisLog, GetAnalysisReminder, RecordMonthlyAnalysis } from './application/monthly-analysis-routine.js';
 import { MongoAnalysisLog } from './infrastructure/mongo-analysis-log.js';
 import { RoutineController } from './presentation/routine.controller.js';
+import { RoutineMcpTools } from './presentation/routine.mcp-tools.js';
 
 /** Rotina mensal: lembrete no app da análise financeira do mês (feita pela skill do Claude Code). */
 @Module({
   controllers: [RoutineController],
   providers: [
+    RoutineMcpTools,
     { provide: Clock, useFactory: () => new SystemClock() },
     { provide: AnalysisLog, useFactory: (db: Db) => new MongoAnalysisLog(db), inject: [Db] },
     {

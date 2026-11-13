@@ -5,7 +5,7 @@ import { YearMonth } from '../../../shared/kernel/year-month.js';
 
 export type AnalysisOutcome = 'feita' | 'pulada';
 /** Por onde a análise foi registrada: pela skill (CLI no servidor) ou pelo botão no app. */
-export type AnalysisChannel = 'skill' | 'app';
+export type AnalysisChannel = 'skill' | 'app' | 'mcp';
 
 export interface AnalysisRecord {
   readonly month: string;

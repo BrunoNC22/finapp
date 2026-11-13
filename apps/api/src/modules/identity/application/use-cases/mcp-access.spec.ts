@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { mcpTokenStoreContract } from '../../../../../test/contracts/mcp-token-store.contract.js';
 import { FixedClock } from '../../../../../test/doubles/fixed-clock.js';
 import { InMemoryMcpTokenStore } from '../../../../../test/doubles/in-memory-identity.js';
 import { CryptoSecretTokens } from '../../infrastructure/identity-adapters.js';
 import { McpAccess } from './mcp-access.js';
 
-describe('McpAccess (read token for the assistant)', () => {
+mcpTokenStoreContract('memória', async () => new InMemoryMcpTokenStore());
+
+describe('McpAccess (tokens for the assistant)', () => {
   const setup = () => {
     const store = new InMemoryMcpTokenStore();
     const clock = new FixedClock(new Date('2026-11-08T15:00:00Z'));
@@ -17,16 +20,24 @@ describe('McpAccess (read token for the assistant)', () => {
     expect(token.length).toBeGreaterThan(40);
     expect(JSON.stringify(store.rows)).not.toContain(token);
     clock.advanceMinutes(5);
-    expect(await access.verify(token)).toBe(true);
+    expect(await access.verify(token)).toEqual({ label: 'Claude Code no desktop', scope: 'leitura' });
     expect((await access.list())[0]).toMatchObject({ label: 'Claude Code no desktop', lastUsedAt: clock.now() });
+  });
+
+  it('issues read tokens by default and write tokens only when asked', async () => {
+    const { access } = setup();
+    const reader = await access.issue('leitor');
+    const writer = await access.issue('agente', 'escrita');
+    expect((await access.verify(reader))?.scope).toBe('leitura');
+    expect((await access.verify(writer))?.scope).toBe('escrita');
   });
 
   it('rejects missing, unknown and revoked tokens', async () => {
     const { access } = setup();
     const token = await access.issue('x');
-    expect(await access.verify(undefined)).toBe(false);
-    expect(await access.verify('nao-existe')).toBe(false);
+    expect(await access.verify(undefined)).toBeUndefined();
+    expect(await access.verify('nao-existe')).toBeUndefined();
     expect(await access.revokeAll()).toBe(1);
-    expect(await access.verify(token)).toBe(false);
+    expect(await access.verify(token)).toBeUndefined();
   });
 });

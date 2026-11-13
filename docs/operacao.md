@@ -38,18 +38,24 @@ Redefinir a senha encerra todas as sessões abertas. Depois de entrar com a senh
 
 ## Conectar o Claude Code (assistente via MCP)
 
-O finapp expõe ferramentas **somente leitura** por MCP em `/api/mcp` (ADR 0013). Gere um token de leitura e registre
-o servidor no Claude Code, sem que o token apareça na tela:
+O finapp expõe ferramentas por MCP em `/api/mcp` (ADRs 0013 e 0014). O token decide o que o Claude Code pode fazer:
+**leitura** (padrão) ou **escrita** (`--escrita`: categorias, regras, metas, renda, carreira, sincronização e a análise do
+mês; senha, passkeys e tokens ficam fora do MCP). Gere o token e registre o servidor no Claude Code, sem que o token
+apareça na tela:
 
 ```sh
-TOKEN=$(docker compose exec -T api node dist/cli.js mcp-token "Claude Code")
+TOKEN=$(docker compose exec -T api node dist/cli.js mcp-token "Claude Code")             # leitura
+# TOKEN=$(docker compose exec -T api node dist/cli.js mcp-token --escrita "Claude Code") # escrita
 claude mcp add --transport http --scope user finapp http://127.0.0.1:8080/api/mcp \
   --header "Authorization: Bearer $TOKEN"
 unset TOKEN
 ```
 
 Depois, no Claude Code: "o que mais pesou nos meus gastos nos últimos 3 meses?". Outros comandos:
-`node dist/cli.js mcp-tokens` (lista e último uso) e `node dist/cli.js mcp-revoke` (revoga todos).
+`node dist/cli.js mcp-tokens` (lista com escopo e último uso), `node dist/cli.js mcp-revoke` (revoga todos) e
+`node dist/cli.js mcp-auditoria [N]` (as últimas alterações feitas pelo MCP). Para trocar um token de leitura por um de
+escrita: revogue, gere o novo e rode `claude mcp remove finapp` antes do `claude mcp add`. Deixe as ferramentas de
+excluir e mesclar pedindo confirmação no Claude Code.
 
 A ferramenta `analise_mensal` junta numa chamada tudo o que uma análise do mês precisa (o mês e o anterior,
 categorias, gastos, compromissos, recorrências, renda por cenário, metas e oportunidades). O mesmo pacote sai sem MCP,

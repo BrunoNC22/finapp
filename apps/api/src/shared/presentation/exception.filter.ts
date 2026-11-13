@@ -36,7 +36,7 @@ export class AppExceptionFilter implements ExceptionFilter {
       reply.status(422).send({ message: error.message });
       return;
     }
-    this.logger.error(`erro não tratado: ${describe(error)}`);
+    this.logger.error(`erro não tratado: ${describeError(error)}`);
     reply.status(500).send({ message: 'erro interno' });
   }
 }
@@ -45,7 +45,7 @@ export class AppExceptionFilter implements ExceptionFilter {
  * Nome do erro e onde ele aconteceu (até 3 linhas do stack), SEM a mensagem: mensagens de drivers podem trazer dados
  * (ex.: chave duplicada do Mongo mostra os valores). As linhas "at …" só têm funções e arquivos.
  */
-function describe(error: unknown): string {
+export function describeError(error: unknown): string {
   if (!(error instanceof Error)) return typeof error;
   const frames = (error.stack ?? '')
     .split('\n')

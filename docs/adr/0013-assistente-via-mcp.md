@@ -1,6 +1,6 @@
 # 0013 — Assistente via MCP (somente leitura, HTTP na própria API)
 
-- Status: aceita
+- Status: aceita; a restrição "somente leitura" foi substituída pelo [0014](0014-mcp-com-escrita-por-escopo.md)
 - Data: 2026-11-08
 
 ## Contexto

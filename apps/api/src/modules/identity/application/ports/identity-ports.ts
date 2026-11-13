@@ -51,17 +51,30 @@ export abstract class PasskeyService {
   ): Promise<{ credentialId: string; newCounter: number }>;
 }
 
+/** O que um token MCP permite: só ler, ou também alterar dados pelas ferramentas de escrita. */
+export type McpScope = 'leitura' | 'escrita';
+
+/** Quem está chamando o MCP: o rótulo do token (para auditoria) e o escopo. */
+export interface McpGrant {
+  readonly label: string;
+  readonly scope: McpScope;
+}
+
 export interface McpTokenInfo {
   readonly label: string;
+  readonly scope: McpScope;
   readonly createdAt: Date;
   readonly lastUsedAt?: Date;
 }
 
-/** Tokens de LEITURA para o assistente (MCP). Guarda só o hash; não servem como sessão de login. */
+/**
+ * Tokens do assistente (MCP), de leitura ou de escrita. Guarda só o hash; não servem como sessão de login.
+ * Tokens antigos, sem escopo gravado, são de leitura.
+ */
 export abstract class McpTokenStore {
-  abstract add(tokenHash: string, label: string, createdAt: Date): Promise<void>;
-  /** Existe? Se sim, registra o uso. */
-  abstract use(tokenHash: string, at: Date): Promise<boolean>;
+  abstract add(tokenHash: string, label: string, createdAt: Date, scope: McpScope): Promise<void>;
+  /** Existe? Se sim, registra o uso e devolve rótulo e escopo. */
+  abstract use(tokenHash: string, at: Date): Promise<McpGrant | undefined>;
   abstract list(): Promise<McpTokenInfo[]>;
   abstract revokeAll(): Promise<number>;
 }

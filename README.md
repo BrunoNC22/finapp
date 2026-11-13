@@ -40,7 +40,8 @@ corepack pnpm demo:down   # ou: docker compose -f compose.demo.yaml down --volum
   otimista), com o mês em que cabe e os caminhos quando não cabe.
 - **Quanto você precisa ganhar**: a renda mensal mínima para todas as metas caberem, por busca binária sobre o plano.
 - **Carreira**: perfil profissional e um quadro de oportunidades de renda (ideia → aplicada → em conversa → fechada).
-- **Assistente de IA via MCP**: o Claude Code lê os dados por ferramentas **somente leitura** e faz a análise do mês.
+- **Assistente de IA via MCP**: o Claude Code lê os dados, faz a análise do mês e, com um token de escrita, opera o
+  app inteiro (categorias, regras, metas, renda, carreira), pelas mesmas regras da tela e com auditoria.
 - **App de banco no celular**: PWA instalável, login por senha ou digital (passkey) e sessão que expira sozinha.
 
 | Painel                                          | Metas (tema escuro)                                 |
@@ -70,7 +71,7 @@ flowchart LR
   end
   OF["Open Finance<br/>(Pluggy)"]
   PWA -- "HTTPS na VPN (Tailscale)" --> WEB --> PRES
-  CC -- "MCP, somente leitura" --> WEB
+  CC -- "MCP (leitura ou escrita, por token)" --> WEB
   INFRA --> DB
   INFRA --> OF
 ```
@@ -96,8 +97,9 @@ Módulos da API: `ledger` (contas, transações, categorias, parcelas), `plannin
 - **Segurança em camadas**: dados em repouso num container LUKS, acesso só pela VPN, banco numa rede sem saída para a
   internet, login no estilo app de banco com passkey, CSP restrita e, no repositório, `gitleaks` mais uma denylist
   pessoal no pre-commit ([ADRs 0003, 0004, 0009 e 0012](docs/adr/README.md)).
-- **IA sem acesso de escrita**: o servidor MCP roda na própria API, com tokens próprios e ferramentas somente leitura
-  ([ADR 0013](docs/adr/0013-assistente-via-mcp.md)).
+- **IA com escrita controlada**: o servidor MCP roda na própria API, com tokens próprios de leitura ou de escrita. Cada
+  módulo declara suas ferramentas, que chamam os mesmos controllers da tela; identidade fica de fora e toda escrita é
+  auditada ([ADRs 0013 e 0014](docs/adr/0014-mcp-com-escrita-por-escopo.md)).
 - **Gráficos com uma única configuração**: tema, cores fixas por categoria e formatação de moeda num só arquivo
   ([ADR 0007](docs/adr/0007-chartjs-com-configuracao-centralizada.md)).
 

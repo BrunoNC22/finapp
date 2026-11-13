@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import {
   ChallengeStore,
+  type McpScope,
   McpTokenStore,
   OwnerRepository,
   PasskeyService,
@@ -131,15 +132,15 @@ export class FakePasskeyService extends PasskeyService {
 
 /** Fake em memória dos tokens MCP (inspecionável nos testes). */
 export class InMemoryMcpTokenStore extends McpTokenStore {
-  readonly rows = new Map<string, { label: string; createdAt: Date; lastUsedAt?: Date }>();
-  async add(tokenHash: string, label: string, createdAt: Date) {
-    this.rows.set(tokenHash, { label, createdAt });
+  readonly rows = new Map<string, { label: string; scope: McpScope; createdAt: Date; lastUsedAt?: Date }>();
+  async add(tokenHash: string, label: string, createdAt: Date, scope: McpScope) {
+    this.rows.set(tokenHash, { label, scope, createdAt });
   }
   async use(tokenHash: string, at: Date) {
     const row = this.rows.get(tokenHash);
-    if (!row) return false;
+    if (!row) return undefined;
     row.lastUsedAt = at;
-    return true;
+    return { label: row.label, scope: row.scope };
   }
   async list() {
     return [...this.rows.values()].map((r) => ({ ...r }));

@@ -14,7 +14,7 @@ O app expõe dados financeiros pessoais. Mesmo acessível só pela VPN (ADR 0003
 - **Bloqueio:** 5 senhas erradas seguidas bloqueiam por 15 min (429 com `Retry-After`). Mensagens de erro genéricas.
 - **Primeiro acesso e "esqueci a senha":** código de uso único (15 min) gerado **no terminal do servidor** (`node dist/cli.js setup-token`). Redefinir a senha encerra todas as sessões.
 - **Guard global:** toda rota exige sessão, exceto as marcadas com `@Public()` (health, status, setup e login). Um teste e2e **varre todas as rotas registradas** e garante 401 sem sessão.
-- O assistente de IA (MCP) terá token próprio, só de leitura (ADR 0008).
+- O assistente de IA (MCP) terá token próprio, só de leitura (ADR 0008; escrita por escopo desde o ADR 0014).
 
 ## Consequências
 

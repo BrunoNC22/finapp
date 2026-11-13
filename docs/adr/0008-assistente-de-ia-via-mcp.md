@@ -1,6 +1,6 @@
 # 0008. Expor o assistente de IA via MCP
 
-- Status: Aceito
+- Status: Aceito; "sem escrita" substituído pelo [0014](0014-mcp-com-escrita-por-escopo.md)
 - Data: 2026-11-07
 
 ## Contexto

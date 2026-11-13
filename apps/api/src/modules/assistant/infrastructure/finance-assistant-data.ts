@@ -153,11 +153,13 @@ export class FinanceAssistantData extends AssistantData {
     );
     return {
       transacoes: page.items.map((t) => ({
+        id: t.id,
         data: t.occurredOn.toString(),
         descricao: t.description,
         ...(t.counterparty?.name ? { contraparte: t.counterparty.name } : {}),
         valor: reais(t.amount),
         categoria: n.category(t.category?.categoryId),
+        categoria_id: t.category?.categoryId ?? null,
         tipo: TYPE[t.classification] ?? t.classification,
         forma: t.paymentMethod,
         conta: n.account(t.accountId),
@@ -201,6 +203,7 @@ export class FinanceAssistantData extends AssistantData {
     const [r, n] = await Promise.all([this.deps.report.execute(), this.names()]);
     return {
       recorrencias: r.recurring.map((x) => ({
+        chave: x.key,
         nome: x.label,
         valor_tipico: positive(x.typicalAmount),
         a_cada_dias: x.intervalDays,
@@ -219,6 +222,7 @@ export class FinanceAssistantData extends AssistantData {
     const name = (id: string) => sources.find((s) => s.id === id)?.name ?? 'Fonte';
     return {
       fontes: sources.map((s) => ({
+        id: s.id,
         nome: s.name,
         tipo: s.props.kind,
         valor_mensal: reais(s.expectedMonthly),
@@ -261,6 +265,7 @@ export class FinanceAssistantData extends AssistantData {
       folga_minima_percentual: MIN_SLACK_PERCENT,
       metas: goals.map((g, index) => ({
         ordem: index + 1,
+        id: g.id,
         nome: g.name,
         tipo: g.props.kind,
         guardar_para_comecar: reais(g.upfront()),
@@ -350,6 +355,7 @@ export class FinanceAssistantData extends AssistantData {
       oportunidades: all
         .filter((o) => !onlyOpen || o.isOpen)
         .map((o) => ({
+          id: o.id,
           titulo: o.props.title,
           tipo: o.props.kind,
           status: o.props.status,

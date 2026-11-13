@@ -1,9 +1,12 @@
 import 'reflect-metadata';
 import { Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { Db } from 'mongodb';
 import { AssistantData } from './modules/assistant/application/assistant-data.js';
+import { McpAuditLog } from './modules/assistant/application/mcp-audit-log.js';
 import { monthlyAnalysisPack } from './modules/assistant/application/monthly-analysis.js';
 import { AssistantModule } from './modules/assistant/assistant.module.js';
+import { MongoMcpAuditLog } from './modules/assistant/infrastructure/mongo-mcp-audit-log.js';
 import { AuthService } from './modules/identity/application/use-cases/auth.js';
 import { McpAccess } from './modules/identity/application/use-cases/mcp-access.js';
 import { IdentityModule } from './modules/identity/identity.module.js';
@@ -17,9 +20,11 @@ import { MongoModule } from './shared/infrastructure/mongo/mongo.module.js';
 /**
  * Comandos de administração, rodados no servidor:
  *   node dist/cli.js setup-token          → código de uso único (15 min) para o primeiro acesso ou "esqueci a senha"
- *   node dist/cli.js mcp-token [rótulo]   → token de LEITURA para o Claude Code (MCP); mostrado uma única vez
- *   node dist/cli.js mcp-tokens           → lista os tokens MCP (rótulo, criação, último uso)
+ *   node dist/cli.js mcp-token [--escrita] [rótulo] → token para o Claude Code (MCP), mostrado uma única vez;
+ *                                          de LEITURA, ou de ESCRITA com --escrita (pode alterar dados; ADR 0014)
+ *   node dist/cli.js mcp-tokens           → lista os tokens MCP (rótulo, escopo, criação, último uso)
  *   node dist/cli.js mcp-revoke           → revoga todos os tokens MCP
+ *   node dist/cli.js mcp-auditoria [N]    → as N últimas alterações feitas pelo MCP (padrão 20)
  *   node dist/cli.js analise-mensal [AAAA-MM] → JSON do pacote da análise mensal (o mesmo da ferramenta MCP
  *                                          analise_mensal), para analisar sem conectar o MCP; sem mês: o último fechado
  *   node dist/cli.js analise-feita [AAAA-MM]  → marca a análise do mês como feita (tira o lembrete do app)
@@ -33,15 +38,30 @@ class AnalysisCliModule {}
 @Module({ imports: [ConfigModule, MongoModule, RoutineModule] })
 class RoutineCliModule {}
 
+@Module({
+  imports: [ConfigModule, MongoModule],
+  providers: [{ provide: McpAuditLog, useFactory: (db: Db) => new MongoMcpAuditLog(db), inject: [Db] }],
+})
+class AuditCliModule {}
+
 async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2);
-  const commands = ['setup-token', 'mcp-token', 'mcp-tokens', 'mcp-revoke', 'analise-mensal', 'analise-feita'];
+  const commands = [
+    'setup-token',
+    'mcp-token',
+    'mcp-tokens',
+    'mcp-revoke',
+    'mcp-auditoria',
+    'analise-mensal',
+    'analise-feita',
+  ];
   if (!command || !commands.includes(command)) {
     console.error(`uso: node dist/cli.js ${commands.join(' | ')}`);
     process.exit(2);
   }
   if (command === 'analise-mensal') return analysis(args[0]);
   if (command === 'analise-feita') return markDone(args[0]);
+  if (command === 'mcp-auditoria') return auditTrail(args[0]);
   AppConfig.fromEnv(process.env);
   const app = await NestFactory.createApplicationContext(CliModule, { logger: false });
   try {
@@ -51,14 +71,20 @@ async function main(): Promise<void> {
       // biome-ignore lint/suspicious/noConsole: saída do comando de administração (só o código, para poder ser copiado/canalizado)
       console.log(token);
     } else if (command === 'mcp-token') {
-      const token = await app.get(McpAccess).issue(args.join(' '));
-      console.error('Token de leitura para o MCP (guarde agora: não será mostrado de novo):');
+      const write = args.includes('--escrita');
+      const label = args.filter((a) => a !== '--escrita').join(' ');
+      const token = await app.get(McpAccess).issue(label, write ? 'escrita' : 'leitura');
+      console.error(
+        write
+          ? 'Token de ESCRITA para o MCP: o assistente poderá alterar dados (guarde agora: não será mostrado de novo):'
+          : 'Token de leitura para o MCP (guarde agora: não será mostrado de novo):',
+      );
       // biome-ignore lint/suspicious/noConsole: saída do comando de administração (só o token, para poder ser canalizado)
       console.log(token);
     } else if (command === 'mcp-tokens') {
       for (const t of await app.get(McpAccess).list()) {
         console.error(
-          `${t.label} · criado ${t.createdAt.toISOString()} · último uso ${t.lastUsedAt?.toISOString() ?? 'nunca'}`,
+          `${t.label} · ${t.scope} · criado ${t.createdAt.toISOString()} · último uso ${t.lastUsedAt?.toISOString() ?? 'nunca'}`,
         );
       }
     } else {
@@ -83,6 +109,25 @@ async function analysis(month: string | undefined): Promise<void> {
     const pack = await monthlyAnalysisPack(app.get(AssistantData), month);
     // biome-ignore lint/suspicious/noConsole: saída do comando (JSON, para ser canalizado)
     console.log(JSON.stringify(pack, null, 1));
+  } finally {
+    await app.close();
+  }
+}
+
+/** O que o assistente alterou pelo MCP: data, token, ferramenta, resultado e argumentos. */
+async function auditTrail(limit: string | undefined): Promise<void> {
+  const parsed = Number.parseInt(limit ?? '20', 10);
+  AppConfig.fromEnv(process.env);
+  const app = await NestFactory.createApplicationContext(AuditCliModule, { logger: false });
+  try {
+    const entries = await app
+      .get(McpAuditLog)
+      .recent(Number.isFinite(parsed) ? Math.min(Math.max(parsed, 1), 500) : 20);
+    if (entries.length === 0) console.error('Nenhuma alteração feita pelo MCP.');
+    for (const e of entries.reverse()) {
+      const status = e.outcome === 'ok' ? 'ok' : `ERRO: ${e.error ?? ''}`;
+      console.error(`${e.at.toISOString()} · ${e.token} · ${e.tool} · ${status} · ${JSON.stringify(e.args)}`);
+    }
   } finally {
     await app.close();
   }

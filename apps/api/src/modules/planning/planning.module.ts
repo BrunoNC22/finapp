@@ -27,12 +27,14 @@ import { LedgerHouseholdFinances, MongoGoalRepository } from './infrastructure/g
 import { LedgerIncomeAdapter, MongoIncomeSourceRepository } from './infrastructure/income-adapters.js';
 import { GoalsController } from './presentation/goals.controller.js';
 import { IncomeController } from './presentation/income.controller.js';
+import { PlanningMcpTools } from './presentation/planning.mcp-tools.js';
 
 /** Planejamento: fontes de renda e cenários (e, em seguida, metas e viabilidade). */
 @Module({
   imports: [LedgerModule],
   controllers: [IncomeController, GoalsController],
   providers: [
+    PlanningMcpTools,
     { provide: Clock, useFactory: () => new SystemClock() },
     { provide: IdGenerator, useFactory: () => new UuidIdGenerator() },
     { provide: IncomeSourceRepository, useFactory: (db: Db) => new MongoIncomeSourceRepository(db), inject: [Db] },

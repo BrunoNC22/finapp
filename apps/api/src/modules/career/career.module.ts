@@ -14,11 +14,13 @@ import {
 } from './application/career.js';
 import { MongoCareerProfileRepository, MongoOpportunityRepository } from './infrastructure/career-adapters.js';
 import { CareerController } from './presentation/career.controller.js';
+import { CareerMcpTools } from './presentation/career.mcp-tools.js';
 
 /** Carreira: perfil profissional e oportunidades de renda (alimenta o assistente). */
 @Module({
   controllers: [CareerController],
   providers: [
+    CareerMcpTools,
     { provide: Clock, useFactory: () => new SystemClock() },
     { provide: IdGenerator, useFactory: () => new UuidIdGenerator() },
     { provide: CareerProfileRepository, useFactory: (db: Db) => new MongoCareerProfileRepository(db), inject: [Db] },

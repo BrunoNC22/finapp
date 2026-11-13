@@ -57,6 +57,7 @@ import {
   InstallmentsController,
   TransactionsController,
 } from './presentation/ledger.controllers.js';
+import { LedgerMcpTools } from './presentation/ledger.mcp-tools.js';
 import { ReportsController } from './presentation/reports.controller.js';
 import { ConnectionsController, SyncController } from './presentation/sync.controller.js';
 
@@ -90,6 +91,7 @@ function openFinanceProvider(config: AppConfig, clock: Clock): OpenFinanceProvid
     ReportsController,
   ],
   providers: [
+    LedgerMcpTools,
     { provide: Clock, useFactory: () => new SystemClock() },
     { provide: IdGenerator, useFactory: () => new UuidIdGenerator() },
     mongo(TransactionRepository, (db) => new MongoTransactionRepository(db)),

@@ -10,6 +10,8 @@ import {
 import type { Collection, Db } from 'mongodb';
 import {
   ChallengeStore,
+  type McpGrant,
+  type McpScope,
   type McpTokenInfo,
   McpTokenStore,
   OwnerRepository,
@@ -296,6 +298,8 @@ export class MongoSetupTokenStore extends SetupTokenStore {
 interface McpTokenDocument {
   _id: string;
   label: string;
+  /** Ausente nos tokens criados antes do escopo existir: leitura. */
+  scope?: McpScope;
   createdAt: Date;
   lastUsedAt?: Date;
 }
@@ -306,15 +310,17 @@ export class MongoMcpTokenStore extends McpTokenStore {
     super();
     this.collection = db.collection<McpTokenDocument>(IDENTITY_COLLECTIONS.mcpTokens);
   }
-  async add(tokenHash: string, label: string, createdAt: Date): Promise<void> {
-    await this.collection.insertOne({ _id: tokenHash, label, createdAt });
+  async add(tokenHash: string, label: string, createdAt: Date, scope: McpScope): Promise<void> {
+    await this.collection.insertOne({ _id: tokenHash, label, createdAt, scope });
   }
-  async use(tokenHash: string, at: Date): Promise<boolean> {
-    return (await this.collection.updateOne({ _id: tokenHash }, { $set: { lastUsedAt: at } })).matchedCount === 1;
+  async use(tokenHash: string, at: Date): Promise<McpGrant | undefined> {
+    const doc = await this.collection.findOneAndUpdate({ _id: tokenHash }, { $set: { lastUsedAt: at } });
+    return doc ? { label: doc.label, scope: doc.scope ?? 'leitura' } : undefined;
   }
   async list(): Promise<McpTokenInfo[]> {
     return (await this.collection.find().sort({ createdAt: 1 }).toArray()).map((d) => ({
       label: d.label,
+      scope: d.scope ?? 'leitura',
       createdAt: d.createdAt,
       ...(d.lastUsedAt ? { lastUsedAt: d.lastUsedAt } : {}),
     }));

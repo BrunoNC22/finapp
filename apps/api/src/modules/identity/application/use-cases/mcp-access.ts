@@ -1,10 +1,10 @@
 import type { Clock } from '../../../../shared/application/clock.js';
-import type { McpTokenInfo, McpTokenStore, SecretTokens } from '../ports/identity-ports.js';
+import type { McpGrant, McpScope, McpTokenInfo, McpTokenStore, SecretTokens } from '../ports/identity-ports.js';
 
 /**
- * Acesso de leitura do assistente (Claude Code via MCP) aos dados financeiros. É separado do login:
- * a sessão de login expira em minutos (como app de banco); o token MCP vale até ser revogado, só lê,
- * e é gerado no servidor (CLI), mostrado uma única vez.
+ * Acesso do assistente (Claude Code via MCP) ao app. É separado do login: a sessão de login expira em minutos
+ * (como app de banco); o token MCP vale até ser revogado e é gerado no servidor (CLI), mostrado uma única vez.
+ * Escopo `leitura` (padrão) só enxerga as ferramentas de leitura; `escrita` também as que alteram dados (ADR 0014).
  */
 export class McpAccess {
   constructor(
@@ -13,14 +13,14 @@ export class McpAccess {
     private readonly clock: Clock,
   ) {}
 
-  async issue(label: string): Promise<string> {
+  async issue(label: string, scope: McpScope = 'leitura'): Promise<string> {
     const { token, hash } = this.tokens.generate();
-    await this.store.add(hash, label.trim() || 'Claude Code', this.clock.now());
+    await this.store.add(hash, label.trim() || 'Claude Code', this.clock.now(), scope);
     return token;
   }
 
-  async verify(token: string | undefined): Promise<boolean> {
-    if (!token) return false;
+  async verify(token: string | undefined): Promise<McpGrant | undefined> {
+    if (!token) return undefined;
     return this.store.use(this.tokens.hashOf(token), this.clock.now());
   }
 
