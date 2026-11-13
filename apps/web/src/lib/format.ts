@@ -22,6 +22,11 @@ export const formatCentsCompact = (cents: number): string => brlCompact.format(c
 /** 40 → "+40%". */
 export const formatPercent = (value: number): string => percent.format(value / 100);
 
+const rate = new Intl.NumberFormat('pt-BR', { style: 'percent', maximumFractionDigits: 2 });
+
+/** Fração → taxa sem sinal: 0,2 → "20%"; 0,0199 → "1,99%". */
+export const formatRate = (fraction: number): string => rate.format(fraction);
+
 const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
 /** "2026-10-05" → "05/10/2026". Sem fuso: é uma data de calendário. */

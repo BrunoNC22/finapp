@@ -29,6 +29,36 @@ export function goalRepositoryContract(name: string, make: () => Promise<GoalRep
       expect(back?.installment().cents).toBe(27500);
     });
 
+    it('round-trips the asset category and the trade-ins (goal and owned asset)', async () => {
+      const repo = await make();
+      await repo.save(goal('bike', { category: { kind: 'vehicle' } }));
+      await repo.save(
+        goal('moto', {
+          category: { kind: 'other', label: 'Duas rodas' },
+          tradeIns: [
+            { source: { kind: 'goal', goalId: 'bike' }, annualDepreciationRate: 0.2 },
+            {
+              source: { kind: 'owned', name: 'Capacete', currentValue: Money.fromCents(45000) },
+              annualDepreciationRate: 0,
+            },
+          ],
+        }),
+      );
+      expect((await repo.findById('bike'))?.props.category).toEqual({ kind: 'vehicle' });
+      expect((await repo.findById('bike'))?.tradeIns).toEqual([]);
+      const moto = await repo.findById('moto');
+      expect(moto?.props.category).toEqual({ kind: 'other', label: 'Duas rodas' });
+      expect(moto?.tradeIns).toEqual([
+        { source: { kind: 'goal', goalId: 'bike' }, annualDepreciationRate: 0.2 },
+        {
+          source: { kind: 'owned', name: 'Capacete', currentValue: Money.fromCents(45000) },
+          annualDepreciationRate: 0,
+        },
+      ]);
+      await repo.save(goal('moto'));
+      expect((await repo.findById('moto'))?.props.category).toBeUndefined();
+    });
+
     it('keeps the order: new goals go last, updates keep their place, reorder changes it', async () => {
       const repo = await make();
       for (const id of ['a', 'b', 'c']) await repo.save(goal(id));

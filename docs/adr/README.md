@@ -18,6 +18,7 @@ Cada ADR registra **uma** decisão técnica: o contexto, o que foi decidido e as
 | [0012](0012-autenticacao-estilo-app-de-banco.md)       | Autenticação no estilo app de banco                           | Aceito                                |
 | [0013](0013-assistente-via-mcp.md)                     | Assistente via MCP (somente leitura, HTTP na própria API)     | Aceito; leitura substituída pelo 0014 |
 | [0014](0014-mcp-com-escrita-por-escopo.md)             | Escrita pelo MCP, com escopo por token e auditoria            | Aceito                                |
+| [0015](0015-revenda-de-bens-nas-metas.md)              | Revenda de bens nas metas (desvalorização e saldo quitado)    | Aceito                                |
 
 ## Modelo
 

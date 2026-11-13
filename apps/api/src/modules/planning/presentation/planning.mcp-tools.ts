@@ -34,7 +34,10 @@ export class PlanningMcpTools implements McpToolProvider {
       'Valores em CENTAVOS (R$ 3.300,00 = 330000). kind: purchase (compra), debt (dívida), reserve (reserva) ou ' +
       'lifestyle (custo mensal, ex.: morar sozinho). financing: à vista, parcelado sem juros, financiado (Price) ou ' +
       'consórcio. recurringCosts: custos mensais que a meta traz; replacesCategoryId = a categoria de gasto que ela ' +
-      'substitui (ex.: a bike substitui o transporte por app).';
+      'substitui (ex.: a bike substitui o transporte por app). category: categoria do bem (só compra, informativa). ' +
+      'tradeIns: bens vendidos na largada para ajudar a pagar (o bem de uma meta de compra anterior ou um bem que ' +
+      'a pessoa já tem), com a desvalorização anual; o valor estimado e o saldo quitado aparecem em ' +
+      'metas_e_viabilidade.';
     return [
       mcpTool({
         name: 'criar_meta',
@@ -56,7 +59,9 @@ export class PlanningMcpTools implements McpToolProvider {
       mcpTool({
         name: 'excluir_meta',
         title: 'Excluir meta',
-        description: 'Exclui a meta. Não há desfazer: confirme com o usuário antes.',
+        description:
+          'Exclui a meta. Não há desfazer: confirme com o usuário antes. Se outra meta vendia o bem desta, essa ' +
+          'venda sai junto (avise o usuário).',
         input: { id: id('da meta') },
         access: 'escrita',
         destructive: true,
@@ -68,7 +73,9 @@ export class PlanningMcpTools implements McpToolProvider {
       mcpTool({
         name: 'reordenar_metas',
         title: 'Reordenar metas',
-        description: 'Nova ordem de realização: os ids de TODAS as metas, da primeira para a última.',
+        description:
+          'Nova ordem de realização: os ids de TODAS as metas, da primeira para a última. Uma meta que passa a vir ' +
+          'antes da meta cujo bem ela vende perde essa venda (avise o usuário).',
         input: ReorderGoalsCommandSchema.shape,
         access: 'escrita',
         idempotent: true,

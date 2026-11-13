@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { formatCents, formatCentsCompact, formatDate, formatDateTime, formatMonth, formatPercent } from './format';
+import {
+  formatCents,
+  formatCentsCompact,
+  formatDate,
+  formatDateTime,
+  formatMonth,
+  formatPercent,
+  formatRate,
+} from './format';
 
 // Intl usa espaço não separável entre "R$" e o número.
 const plain = (s: string) => s.replace(/ /g, ' ');
@@ -24,6 +32,8 @@ describe('format', () => {
     expect(formatPercent(40)).toBe('+40%');
     expect(formatPercent(-12)).toBe('-12%');
     expect(formatPercent(0)).toBe('0%');
+    expect(formatRate(0.2)).toBe('20%');
+    expect(formatRate(0.0199)).toBe('1,99%');
   });
 
   it('shows instants in Brasília time', () => {

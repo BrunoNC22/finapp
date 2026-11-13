@@ -23,9 +23,13 @@ import {
   ReorderGoals,
   ReplaceGoal,
 } from '../application/use-cases/goals.js';
-import type { Goal, GoalProps } from '../domain/goals/goal.js';
+import type { Goal, GoalProps, TradeInSource } from '../domain/goals/goal.js';
 
 const money = (value: Money): MoneyDto => ({ cents: value.cents, currency: 'BRL' });
+const source = (s: TradeInSource) =>
+  s.kind === 'goal'
+    ? { kind: 'goal' as const, goalId: s.goalId }
+    : { kind: 'owned' as const, name: s.name, currentValue: money(s.currentValue) };
 type ParsedGoalCommand = z.output<typeof GoalCommandSchema>;
 
 const toDto = (goal: Goal): GoalDto => {
@@ -42,6 +46,11 @@ const toDto = (goal: Goal): GoalDto => {
       name: c.name,
       monthly: money(c.monthly),
       ...(c.replacesCategoryId ? { replacesCategoryId: c.replacesCategoryId } : {}),
+    })),
+    ...(p.category ? { category: { ...p.category } } : {}),
+    tradeIns: goal.tradeIns.map((t) => ({
+      source: source(t.source),
+      annualDepreciationRate: t.annualDepreciationRate,
     })),
     upfront: money(goal.upfront()),
     installment: money(goal.installment()),
@@ -60,6 +69,16 @@ const toProps = (c: ParsedGoalCommand): Omit<GoalProps, 'id'> => ({
     name: r.name,
     monthly: Money.fromCents(r.monthlyCents),
     ...(r.replacesCategoryId ? { replacesCategoryId: r.replacesCategoryId } : {}),
+  })),
+  ...(c.category
+    ? { category: c.category.label ? { kind: c.category.kind, label: c.category.label } : { kind: c.category.kind } }
+    : {}),
+  tradeIns: c.tradeIns.map((t) => ({
+    source:
+      t.source.kind === 'goal'
+        ? { kind: 'goal', goalId: t.source.goalId }
+        : { kind: 'owned', name: t.source.name, currentValue: Money.fromCents(t.source.currentValueCents) },
+    annualDepreciationRate: t.annualDepreciationRate,
   })),
 });
 
@@ -162,6 +181,11 @@ export class GoalsController {
               ? { kind: 'cut' as const, categoryId: l.categoryId, amount: money(l.amount) }
               : { kind: 'extra_income' as const, amount: money(l.amount) },
           ),
+          tradeIns: g.tradeIns.map((t) => ({
+            source: source(t.source),
+            value: money(t.value),
+            payoff: money(t.payoff),
+          })),
         })),
         timeline: s.timeline.map((m) => ({
           month: m.month.toString(),

@@ -291,6 +291,50 @@ describe('MCP over HTTP (demo ledger, real MongoDB)', () => {
     ]);
   });
 
+  it('plans a goal that sells an earlier goal asset and an owned asset to help pay for it', async () => {
+    const bike = (await tool('metas_e_viabilidade')).metas.find(
+      (m: { nome: string }) => m.nome === 'Bicicleta elétrica',
+    );
+    const created = await tool(
+      'criar_meta',
+      {
+        name: 'Moto',
+        kind: 'purchase',
+        priceCents: 50_000,
+        financing: { kind: 'cash' },
+        category: { kind: 'vehicle' },
+        tradeIns: [
+          { source: { kind: 'goal', goalId: bike.id }, annualDepreciationRate: 0.2 },
+          { source: { kind: 'owned', name: 'Capacete', currentValueCents: 30_000 }, annualDepreciationRate: 0 },
+        ],
+      },
+      writeToken,
+    );
+    const moto = (await tool('metas_e_viabilidade')).metas.find((m: { id: string }) => m.id === created.id);
+    expect(moto).toMatchObject({
+      categoria_do_bem: 'veículo/locomoção',
+      preco: 500,
+      vende_na_largada: [
+        { bem: 'Bicicleta elétrica', meta_id: bike.id, desvalorizacao_anual_percentual: 20 },
+        { bem: 'Capacete', valor_hoje: 300, desvalorizacao_anual_percentual: 0 },
+      ],
+    });
+    const optimistic = moto.por_cenario.otimista;
+    expect(optimistic.comeca_em).not.toBeNull();
+    expect(optimistic.venda_na_largada.map((v: { bem: string }) => v.bem)).toEqual(['Bicicleta elétrica', 'Capacete']);
+    expect(optimistic.venda_na_largada[1]).toMatchObject({ valor_estimado: 300, quita_saldo: 0, liquido: 300 });
+
+    // reordenar a moto para antes da bike tira a venda da bike, sozinho
+    const ids = (await tool('metas_e_viabilidade')).metas.map((m: { id: string }) => m.id);
+    await tool('reordenar_metas', { ids: [created.id, ...ids.filter((id: string) => id !== created.id)] }, writeToken);
+    const after = (await tool('metas_e_viabilidade')).metas.find((m: { id: string }) => m.id === created.id);
+    expect(after.vende_na_largada.map((v: { bem: string }) => v.bem)).toEqual(['Capacete']);
+
+    // devolve o estado compartilhado
+    await tool('excluir_meta', { id: created.id }, writeToken);
+    await tool('reordenar_metas', { ids: ids.filter((id: string) => id !== created.id) }, writeToken);
+  });
+
   it('answers rule violations as tool errors (and audits them)', async () => {
     const rules = await tool('listar_regras');
     const factoryRule = rules.find((r: { id: string }) => r.id.startsWith('default-rule-'));

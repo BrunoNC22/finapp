@@ -3,7 +3,7 @@ import type { LocalDate } from '../../../shared/kernel/local-date.js';
 import { Money } from '../../../shared/kernel/money.js';
 import type { GetAvailableBalance, GetCostOfLiving } from '../../ledger/application/use-cases/cost-of-living.js';
 import { GoalRepository, HouseholdFinances } from '../application/ports/goal-ports.js';
-import { type Financing, Goal, type GoalKind } from '../domain/goals/goal.js';
+import { type AssetCategory, type Financing, Goal, type GoalKind, type TradeIn } from '../domain/goals/goal.js';
 import type { Baseline } from '../domain/goals/plan-simulator.js';
 
 export const GOAL_COLLECTION = 'goals';
@@ -18,10 +18,33 @@ interface GoalDocument {
   oneTimeCostsCents: Long;
   financing: Financing;
   recurringCosts: { name: string; monthlyCents: Long; replacesCategoryId?: string }[];
+  category?: AssetCategory;
+  /** Ausente em metas gravadas antes da revenda existir. */
+  tradeIns?: TradeInDocument[];
 }
 
 const long = (m: Money) => Long.fromNumber(m.cents);
 const money = (l: Long | number) => Money.fromCents(Number(l));
+
+interface TradeInDocument {
+  source: { kind: 'goal'; goalId: string } | { kind: 'owned'; name: string; currentValueCents: Long };
+  annualDepreciationRate: number;
+}
+
+const tradeInDocument = (t: TradeIn): TradeInDocument => ({
+  source:
+    t.source.kind === 'goal'
+      ? { kind: 'goal', goalId: t.source.goalId }
+      : { kind: 'owned', name: t.source.name, currentValueCents: long(t.source.currentValue) },
+  annualDepreciationRate: t.annualDepreciationRate,
+});
+const tradeIn = (d: TradeInDocument): TradeIn => ({
+  source:
+    d.source.kind === 'goal'
+      ? { kind: 'goal', goalId: d.source.goalId }
+      : { kind: 'owned', name: d.source.name, currentValue: money(d.source.currentValueCents) },
+  annualDepreciationRate: d.annualDepreciationRate,
+});
 
 export class MongoGoalRepository extends GoalRepository {
   private readonly collection: Collection<GoalDocument>;
@@ -56,6 +79,8 @@ export class MongoGoalRepository extends GoalRepository {
           monthlyCents: long(c.monthly),
           ...(c.replacesCategoryId ? { replacesCategoryId: c.replacesCategoryId } : {}),
         })),
+        ...(p.category ? { category: { ...p.category } } : {}),
+        tradeIns: goal.tradeIns.map(tradeInDocument),
       },
       { upsert: true },
     );
@@ -85,6 +110,8 @@ function toEntity(doc: GoalDocument): Goal {
       monthly: money(c.monthlyCents),
       ...(c.replacesCategoryId ? { replacesCategoryId: c.replacesCategoryId } : {}),
     })),
+    ...(doc.category ? { category: doc.category } : {}),
+    tradeIns: (doc.tradeIns ?? []).map(tradeIn),
   });
 }
 

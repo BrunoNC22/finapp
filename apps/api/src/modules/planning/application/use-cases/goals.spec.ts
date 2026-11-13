@@ -9,6 +9,7 @@ import {
 import { SequentialIdGenerator } from '../../../../../test/doubles/sequential-id-generator.js';
 import { Money } from '../../../../shared/kernel/money.js';
 import { YearMonth } from '../../../../shared/kernel/year-month.js';
+import { InvalidGoalError } from '../../domain/goals/goal.js';
 import { IncomeSource } from '../../domain/income/income-source.js';
 import {
   CreateGoal,
@@ -50,6 +51,43 @@ describe('goal use cases', () => {
     await new DeleteGoal(goals).execute(a.id);
     await expect(new DeleteGoal(goals).execute(a.id)).rejects.toThrow(UnknownGoalError);
     await expect(new ReplaceGoal(goals).execute('nope', cnh)).rejects.toThrow(UnknownGoalError);
+  });
+
+  it('trade-ins: only sells a purchase goal that comes earlier, and drops sales the queue no longer supports', async () => {
+    const goals = new InMemoryGoalRepository();
+    const create = new CreateGoal(goals, new SequentialIdGenerator('meta'));
+    const sellBike = (goalId: string) => [{ source: { kind: 'goal' as const, goalId }, annualDepreciationRate: 0.2 }];
+    await expect(create.execute({ ...cnh, name: 'Moto', tradeIns: sellBike('nope') })).rejects.toThrow(
+      InvalidGoalError,
+    );
+    expect(await goals.findAll()).toEqual([]);
+
+    const bike = await create.execute({ ...cnh, name: 'Bike', category: { kind: 'vehicle' } });
+    const moto = await create.execute({ ...cnh, name: 'Moto', tradeIns: sellBike(bike.id) });
+    const reserva = await create.execute({ ...cnh, name: 'Reserva', kind: 'reserve' });
+    expect((await goals.findById(moto.id))?.tradeIns).toHaveLength(1);
+    await expect(
+      new ReplaceGoal(goals).execute(bike.id, { ...cnh, name: 'Bike', tradeIns: sellBike(moto.id) }),
+    ).rejects.toThrow(/precisa vir antes/);
+    await expect(
+      new ReplaceGoal(goals).execute(reserva.id, { ...cnh, name: 'Reserva', tradeIns: sellBike(bike.id) }),
+    ).rejects.toThrow(/já é vendido por "Moto"/);
+
+    // reordenar a bike para depois da moto tira a venda da moto, sozinho
+    expect((await new ReorderGoals(goals).execute([moto.id, bike.id, reserva.id])).map((g) => g.id)).toEqual([moto.id]);
+    expect((await goals.findById(moto.id))?.tradeIns).toEqual([]);
+
+    // a bike deixar de ser compra também
+    await new ReorderGoals(goals).execute([bike.id, moto.id, reserva.id]);
+    await new ReplaceGoal(goals).execute(moto.id, { ...cnh, name: 'Moto', tradeIns: sellBike(bike.id) });
+    await new ReplaceGoal(goals).execute(bike.id, { ...cnh, name: 'Bike', kind: 'reserve' });
+    expect((await goals.findById(moto.id))?.tradeIns).toEqual([]);
+
+    // e excluir a bike
+    await new ReplaceGoal(goals).execute(bike.id, { ...cnh, name: 'Bike' });
+    await new ReplaceGoal(goals).execute(moto.id, { ...cnh, name: 'Moto', tradeIns: sellBike(bike.id) });
+    expect((await new DeleteGoal(goals).execute(bike.id)).map((g) => g.name)).toEqual(['Moto']);
+    expect((await goals.findById(moto.id))?.tradeIns).toEqual([]);
   });
 
   it('plan: last 6 closed months of real spending, available balance as savings, every scenario', async () => {

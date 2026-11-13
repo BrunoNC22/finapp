@@ -6,6 +6,7 @@ import { LocalDate } from '../../../../shared/kernel/local-date.js';
 import type { Money } from '../../../../shared/kernel/money.js';
 import { YearMonth } from '../../../../shared/kernel/year-month.js';
 import { Goal, type GoalProps } from '../../domain/goals/goal.js';
+import { assertTradeInsFit, pruneTradeIns } from '../../domain/goals/goal-queue.js';
 import { type Baseline, type PlanResult, simulatePlan } from '../../domain/goals/plan-simulator.js';
 import { type RequiredIncomeStep, requiredIncome } from '../../domain/goals/required-income.js';
 import { projectIncome } from '../../domain/income/income-projection.js';
@@ -33,6 +34,7 @@ export class CreateGoal {
 
   async execute(props: Omit<GoalProps, 'id'>): Promise<Goal> {
     const goal = Goal.create({ id: this.ids.next(), ...props });
+    assertTradeInsFit([...(await this.goals.findAll()), goal], goal);
     await this.goals.save(goal);
     return goal;
   }
@@ -41,32 +43,50 @@ export class CreateGoal {
 export class ReplaceGoal {
   constructor(private readonly goals: GoalRepository) {}
 
+  /** Se a meta deixa de ser compra, as vendas do bem dela em outras metas saem. */
   async execute(id: string, props: Omit<GoalProps, 'id'>): Promise<Goal> {
-    if (!(await this.goals.findById(id))) throw new UnknownGoalError(id);
+    const queue = await this.goals.findAll();
+    if (!queue.some((g) => g.id === id)) throw new UnknownGoalError(id);
     const goal = Goal.create({ id, ...props });
+    assertTradeInsFit(
+      queue.map((g) => (g.id === id ? goal : g)),
+      goal,
+    );
     await this.goals.save(goal);
+    await dropUnsupportedTradeIns(this.goals);
     return goal;
   }
 }
 
+/** Exclui a meta e tira a venda do bem dela de outras metas. Devolve as metas que perderam uma venda. */
 export class DeleteGoal {
   constructor(private readonly goals: GoalRepository) {}
 
-  async execute(id: string): Promise<void> {
+  async execute(id: string): Promise<Goal[]> {
     if (!(await this.goals.delete(id))) throw new UnknownGoalError(id);
+    return dropUnsupportedTradeIns(this.goals);
   }
 }
 
 export class ReorderGoals {
   constructor(private readonly goals: GoalRepository) {}
 
-  async execute(ids: readonly string[]): Promise<void> {
+  /** Uma meta que passa a vir antes da meta cujo bem ela vende perde essa venda. Devolve as metas alteradas. */
+  async execute(ids: readonly string[]): Promise<Goal[]> {
     const current = (await this.goals.findAll()).map((g) => g.id).sort();
     if (current.length !== ids.length || [...ids].sort().some((id, i) => id !== current[i])) {
       throw new InvalidGoalOrderError();
     }
     await this.goals.reorder(ids);
+    return dropUnsupportedTradeIns(this.goals);
   }
+}
+
+/** Grava as metas cujas vendas a fila atual não sustenta mais, sem essas vendas. */
+async function dropUnsupportedTradeIns(goals: GoalRepository): Promise<Goal[]> {
+  const changed = pruneTradeIns(await goals.findAll());
+  for (const goal of changed) await goals.save(goal);
+  return changed;
 }
 
 export interface GoalPlan {

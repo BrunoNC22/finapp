@@ -10,11 +10,14 @@ import { financeKeys, useCategories } from '../shared/queries';
 import { GoalForm } from './GoalForm';
 import {
   ALERT_LABEL,
+  categoryLabel,
   FINANCING_LABEL,
   GOAL_KIND_LABEL,
   type GoalOutcome,
   monthlyEffect,
   outcomeLabel,
+  sellableGoals,
+  tradeInsSummary,
 } from './goal-labels';
 
 type ScenarioId = GoalPlanDto['scenarios'][number]['id'];
@@ -73,6 +76,7 @@ export function GoalsPage() {
           key={editing === 'new' ? 'nova' : editing.id}
           {...(editing !== 'new' ? { goal: editing } : {})}
           categories={categories}
+          sellable={sellableGoals(goals.data ?? [], editing === 'new' ? undefined : editing)}
           busy={save.isPending}
           onSubmit={(command) => save.mutate(command)}
           onCancel={() => setEditing(undefined)}
@@ -129,6 +133,7 @@ export function GoalsPage() {
                 <GoalCard
                   key={goal.id}
                   goal={goal}
+                  goals={goals.data}
                   outcome={selected?.goals.find((o) => o.goalId === goal.id)}
                   categories={categories}
                   first={index === 0}
@@ -136,7 +141,7 @@ export function GoalsPage() {
                   onUp={() => move(index, -1)}
                   onDown={() => move(index, 1)}
                   onEdit={() => setEditing(goal)}
-                  onDelete={() => window.confirm(`Excluir a meta "${goal.name}"?`) && remove.mutate(goal.id)}
+                  onDelete={() => window.confirm(deleteQuestion(goal, goals.data)) && remove.mutate(goal.id)}
                 />
               ))}
             </ol>
@@ -146,6 +151,14 @@ export function GoalsPage() {
       </QueryState>
     </section>
   );
+}
+
+/** Excluir uma meta tira a venda do bem dela de outras metas: avisa antes. */
+function deleteQuestion(goal: GoalDto, goals: readonly GoalDto[]): string {
+  const buyers = goals.filter((g) => g.tradeIns.some((t) => t.source.kind === 'goal' && t.source.goalId === goal.id));
+  return buyers.length
+    ? `Excluir a meta "${goal.name}"? A venda do bem dela em "${buyers.map((b) => b.name).join('", "')}" também sai.`
+    : `Excluir a meta "${goal.name}"?`;
 }
 
 function Comparison({ goals, plan }: { goals: GoalDto[]; plan: GoalPlanDto }) {
@@ -240,6 +253,7 @@ function RequiredIncomeCard({
 
 function GoalCard({
   goal,
+  goals,
   outcome,
   categories,
   first,
@@ -250,6 +264,7 @@ function GoalCard({
   onDelete,
 }: {
   goal: GoalDto;
+  goals: readonly GoalDto[];
   outcome: GoalOutcome | undefined;
   categories: CategoryDirectory;
   first: boolean;
@@ -261,13 +276,21 @@ function GoalCard({
 }) {
   const label = outcomeLabel(outcome);
   const n = goal.financing.kind === 'cash' ? 0 : goal.financing.installments;
+  const category = categoryLabel(goal.category);
+  const sale = outcome?.tradeIns.length
+    ? outcome.tradeIns.reduce((sum, t) => ({ value: sum.value + t.value.cents, payoff: sum.payoff + t.payoff.cents }), {
+        value: 0,
+        payoff: 0,
+      })
+    : undefined;
   return (
     <li className="card goal-card">
       <div className="goal-head">
         <div>
           <strong>{goal.name}</strong>
           <span className="hint">
-            {GOAL_KIND_LABEL[goal.kind]} · {FINANCING_LABEL[goal.financing.kind]}
+            {GOAL_KIND_LABEL[goal.kind]}
+            {category ? ` · ${category}` : ''} · {FINANCING_LABEL[goal.financing.kind]}
           </span>
         </div>
         <span className={`badge badge-${label.tone}`}>{label.text}</span>
@@ -277,6 +300,14 @@ function GoalCard({
         {n > 0 ? ` · ${n}x de ${formatCents(goal.installment.cents)}` : ''} · custo total{' '}
         {formatCents(goal.totalCost.cents)}
       </p>
+      {goal.tradeIns.length > 0 && <p className="hint">Vende na largada: {tradeInsSummary(goal, goals)}</p>}
+      {sale && (
+        <p className="hint">
+          Na largada: vende por {formatCents(sale.value)}
+          {sale.payoff > 0 ? `, quita ${formatCents(sale.payoff)} que ainda devia` : ''} →{' '}
+          <strong>{formatCents(sale.value - sale.payoff)}</strong> para começar
+        </p>
+      )}
       {outcome && (
         <p className="hint">
           No orçamento: {monthlyEffect(outcome.monthlyCost.cents)}

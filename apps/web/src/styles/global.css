@@ -891,6 +891,9 @@ legend {
 .cost-row {
   grid-template-columns: 2fr 1fr 2fr auto;
 }
+.trade-in-row {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
 .goal-preview {
   padding: var(--space-3);
   border-radius: var(--radius-md);

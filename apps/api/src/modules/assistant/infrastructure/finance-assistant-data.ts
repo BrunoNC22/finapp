@@ -30,6 +30,15 @@ const CLASSIFICATION: Record<
   'income' | 'expense' | 'internal_transfer' | 'ignored'
 > = { gasto: 'expense', entrada: 'income', entre_contas: 'internal_transfer', ignorada: 'ignored' };
 const SCENARIO: Record<string, string> = { floor: 'piso', likely: 'provavel', optimistic: 'otimista' };
+const ASSET_CATEGORY: Record<string, string> = {
+  vehicle: 'veículo/locomoção',
+  electronics: 'informática/eletrônicos',
+  home: 'casa/móveis/eletrodomésticos',
+  other: 'outro',
+};
+const percent = (rate: number): number => Math.round(rate * 10000) / 100;
+/** O bem vendido numa meta (mesma forma do planejamento, sem importar o domínio dele). */
+type SoldAsset = { readonly kind: 'goal'; readonly goalId: string } | { readonly kind: 'owned'; readonly name: string };
 
 export interface FinanceAssistantDeps {
   readonly report: GetMonthlyReport;
@@ -259,6 +268,8 @@ export class FinanceAssistantData extends AssistantData {
       }),
       this.names(),
     ]);
+    const soldName = (source: SoldAsset): string =>
+      source.kind === 'owned' ? source.name : (goals.find((g) => g.id === source.goalId)?.name ?? source.goalId);
     return {
       custo_de_vida_atual: reais(plan.baseline.monthlySpending),
       guardado_hoje: reais(plan.startingSavings),
@@ -268,6 +279,24 @@ export class FinanceAssistantData extends AssistantData {
         id: g.id,
         nome: g.name,
         tipo: g.props.kind,
+        categoria_do_bem: g.props.category
+          ? (g.props.category.label ?? ASSET_CATEGORY[g.props.category.kind] ?? g.props.category.kind)
+          : null,
+        preco: reais(g.props.price),
+        entrada: reais(g.props.downPayment),
+        custos_unicos: reais(g.props.oneTimeCosts),
+        financiamento: g.props.financing,
+        custos_mensais: g.props.recurringCosts.map((c) => ({
+          nome: c.name,
+          valor: reais(c.monthly),
+          substitui: c.replacesCategoryId ? n.category(c.replacesCategoryId) : null,
+          substitui_id: c.replacesCategoryId ?? null,
+        })),
+        vende_na_largada: g.tradeIns.map((t) => ({
+          bem: soldName(t.source),
+          ...(t.source.kind === 'goal' ? { meta_id: t.source.goalId } : { valor_hoje: reais(t.source.currentValue) }),
+          desvalorizacao_anual_percentual: percent(t.annualDepreciationRate),
+        })),
         guardar_para_comecar: reais(g.upfront()),
         parcelas: g.installments(),
         valor_da_parcela: reais(g.installment()),
@@ -292,6 +321,12 @@ export class FinanceAssistantData extends AssistantData {
                         ? { cortar_em: n.category(l.categoryId), valor: reais(l.amount) }
                         : { renda_extra: reais(l.amount) },
                     ),
+                    venda_na_largada: o.tradeIns.map((t) => ({
+                      bem: soldName(t.source),
+                      valor_estimado: reais(t.value),
+                      quita_saldo: reais(t.payoff),
+                      liquido: reais(t.value.subtract(t.payoff)),
+                    })),
                   }
                 : null,
             ];

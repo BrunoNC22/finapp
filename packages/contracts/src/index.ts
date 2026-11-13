@@ -450,6 +450,26 @@ export const FinancingSchema = z.discriminatedUnion('kind', [
 ]);
 export type FinancingDto = z.infer<typeof FinancingSchema>;
 
+/** Categoria do bem (só metas de compra; informativa). `label`: nome livre, só em `other`. */
+export const AssetCategorySchema = z.object({
+  kind: z.enum(['vehicle', 'electronics', 'home', 'other']),
+  label: z.string().trim().min(1).max(40).optional(),
+});
+export type AssetCategoryDto = z.infer<typeof AssetCategorySchema>;
+
+/** O bem vendido: o de uma meta de compra anterior na fila, ou um que a pessoa já tem. */
+export const TradeInSourceSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('goal'), goalId: z.string() }),
+  z.object({ kind: z.literal('owned'), name: z.string(), currentValue: MoneySchema }),
+]);
+export type TradeInSourceDto = z.infer<typeof TradeInSourceSchema>;
+export const TradeInSchema = z.object({
+  source: TradeInSourceSchema,
+  /** Fração perdida por ano, composta (0,2 = 20% a.a.). */
+  annualDepreciationRate: z.number(),
+});
+export type TradeInDto = z.infer<typeof TradeInSchema>;
+
 export const GoalSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -461,6 +481,9 @@ export const GoalSchema = z.object({
   recurringCosts: z.array(
     z.object({ name: z.string(), monthly: MoneySchema, replacesCategoryId: z.string().optional() }),
   ),
+  category: AssetCategorySchema.optional(),
+  /** Bens vendidos na largada para ajudar a pagar. */
+  tradeIns: z.array(TradeInSchema),
   /** Calculados: quanto guardar para começar, parcela e custo total. */
   upfront: MoneySchema,
   installment: MoneySchema,
@@ -485,6 +508,32 @@ export const GoalCommandSchema = z.object({
     )
     .max(20)
     .default([]),
+  category: AssetCategorySchema.optional().describe(
+    'Só em metas de compra, informativa: vehicle (veículo/locomoção), electronics (informática/eletrônicos), ' +
+      'home (casa/móveis/eletrodomésticos) ou other (com label livre opcional).',
+  ),
+  tradeIns: z
+    .array(
+      z.object({
+        source: z.discriminatedUnion('kind', [
+          z.object({ kind: z.literal('goal'), goalId: z.string().min(1) }),
+          z.object({
+            kind: z.literal('owned'),
+            name: z.string().trim().min(1).max(60),
+            currentValueCents: z.number().int().min(0),
+          }),
+        ]),
+        annualDepreciationRate: z.number().min(0).max(0.99),
+      }),
+    )
+    .max(10)
+    .default([])
+    .describe(
+      'Bens vendidos na largada para ajudar a pagar a meta. source goal = o bem de uma meta de COMPRA que vem ANTES ' +
+        'na fila (ex.: vender a bike para a entrada da moto); owned = um bem que a pessoa já tem (currentValueCents = ' +
+        'valor hoje). annualDepreciationRate: quanto o bem perde por ano (0.2 = 20%), composto até a venda. O saldo ' +
+        'devedor do bem é quitado com a venda e ele sai do orçamento.',
+    ),
 });
 export type GoalCommand = z.input<typeof GoalCommandSchema>;
 
@@ -522,6 +571,8 @@ export const GoalPlanSchema = z.object({
           alerts: z.array(z.enum(['income_drops', 'beyond_projection'])),
           monthlyGap: MoneySchema.optional(),
           levers: z.array(LeverSchema),
+          /** Bens vendidos na largada, no mês em que a meta começa: valor estimado e saldo quitado. */
+          tradeIns: z.array(z.object({ source: TradeInSourceSchema, value: MoneySchema, payoff: MoneySchema })),
         }),
       ),
       timeline: z.array(

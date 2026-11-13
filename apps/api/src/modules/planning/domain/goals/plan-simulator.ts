@@ -1,6 +1,6 @@
 import { Money } from '../../../../shared/kernel/money.js';
 import type { YearMonth } from '../../../../shared/kernel/year-month.js';
-import type { Goal } from './goal.js';
+import { depreciatedValue, type Goal, type TradeInSource } from './goal.js';
 
 /** Custo de vida atual: gasto médio mensal real e a parte de cada categoria. */
 export interface Baseline {
@@ -27,6 +27,15 @@ export type Lever =
   | { readonly kind: 'extra_income'; readonly amount: Money }
   | { readonly kind: 'cut'; readonly categoryId: string; readonly amount: Money };
 
+/** Um bem vendido na largada da meta, no mês em que ela começa. */
+export interface TradeInOutcome {
+  readonly source: TradeInSource;
+  /** Valor estimado de venda, já desvalorizado. */
+  readonly value: Money;
+  /** Saldo devedor do bem quitado com a venda (zero se já estava pago). */
+  readonly payoff: Money;
+}
+
 export interface GoalOutcome {
   readonly goalId: string;
   /** `scheduled`: cabe e tem mês · `not_feasible`: não cabe no horizonte · `blocked`: espera uma meta anterior que não cabe. */
@@ -41,6 +50,8 @@ export interface GoalOutcome {
   /** Quanto falta por mês para caber (com a folga), quando não cabe. */
   readonly monthlyGap?: Money;
   readonly levers: Lever[];
+  /** Bens vendidos na largada (só quando a meta começa). */
+  readonly tradeIns: TradeInOutcome[];
 }
 
 export interface PlanMonth {
@@ -67,16 +78,55 @@ const MIN_TEST_MONTHS = 12;
 interface Active {
   readonly goal: Goal;
   readonly start: number;
+  /** Mês em que o bem foi vendido: dali em diante a meta sai do orçamento (parcelas quitadas, sem custos). */
+  readonly end?: number;
+}
+
+interface Sale {
+  readonly outcomes: TradeInOutcome[];
+  /** Valor das vendas menos os saldos quitados (pode ser negativo: a diferença sai do guardado). */
+  readonly net: Money;
+  /** As metas ativas com os bens vendidos encerrados no mês da venda. */
+  readonly after: Active[];
+}
+
+/** Vende, no mês `month`, os bens que a meta usa para ajudar a pagar. Bem de meta que não está ativa é ignorado. */
+function sell(goal: Goal, month: number, active: readonly Active[]): Sale {
+  const outcomes: TradeInOutcome[] = [];
+  const sold = new Set<Active>();
+  for (const { source, annualDepreciationRate: rate } of goal.tradeIns) {
+    if (source.kind === 'owned') {
+      outcomes.push({ source, value: depreciatedValue(source.currentValue, rate, month), payoff: Money.zero() });
+      continue;
+    }
+    const owner = active.find((a) => a.goal.id === source.goalId && a.end === undefined && a.start <= month);
+    if (!owner) continue;
+    const age = month - owner.start;
+    sold.add(owner);
+    outcomes.push({
+      source,
+      value: depreciatedValue(owner.goal.props.price, rate, age),
+      payoff: owner.goal.outstandingBalance(age),
+    });
+  }
+  return {
+    outcomes,
+    net: Money.sum(outcomes.map((o) => o.value)).subtract(Money.sum(outcomes.map((o) => o.payoff))),
+    after: active.map((a) => (sold.has(a) ? { ...a, end: month } : a)),
+  };
 }
 
 /**
  * Simula as metas EM SEQUÊNCIA, mês a mês: cada uma começa quando (1) o dinheiro da largada está guardado e
  * (2) o orçamento continua com a folga mínima em todos os meses das parcelas (ou 12 meses, o que for maior),
  * com a renda projetada do cenário. Se a renda cair no meio (fim de uma bolsa), a meta espera ou não cabe.
+ * Bens vendidos na largada (`tradeIns`) entram no dinheiro da largada, já descontado o saldo que ainda devem,
+ * e a meta do bem vendido sai do orçamento a partir daquele mês.
  */
 export function simulatePlan(input: PlanInput): PlanResult {
   const { months, income, baseline, minSlackRatio } = input;
-  const active: Active[] = [];
+  let active: Active[] = [];
+  const sales = new Map<string, TradeInOutcome[]>();
   const outcomes: GoalOutcome[] = [];
   const timeline: PlanMonth[] = [];
   let savings = input.startingSavings;
@@ -84,11 +134,11 @@ export function simulatePlan(input: PlanInput): PlanResult {
   const firstAffordable = new Map<string, number>();
 
   const spendingAt = (j: number, goals: readonly Active[]): Money => {
-    const replaced = new Set(goals.flatMap((a) => a.goal.replacedCategories()));
+    const alive = goals.filter((a) => j >= a.start && (a.end === undefined || j < a.end));
+    const replaced = new Set(alive.flatMap((a) => a.goal.replacedCategories()));
     let cents = baseline.monthlySpending.cents;
     for (const c of replaced) cents -= baseline.byCategory.get(c)?.cents ?? 0;
-    for (const a of goals) {
-      if (j < a.start) continue;
+    for (const a of alive) {
       cents += a.goal.recurringAdds().cents;
       if (j - a.start < a.goal.installments()) cents += a.goal.installment().cents;
     }
@@ -104,12 +154,15 @@ export function simulatePlan(input: PlanInput): PlanResult {
   for (let i = 0; i < months.length; i++) {
     while (next < input.goals.length) {
       const goal = input.goals[next] as Goal;
-      if (savings.isLessThan(goal.upfront())) break;
+      const sale = sell(goal, i, active);
+      const available = savings.add(sale.net);
+      if (available.isLessThan(goal.upfront())) break;
       if (!firstAffordable.has(goal.id)) firstAffordable.set(goal.id, i);
-      const candidate = [...active, { goal, start: i }];
+      const candidate = [...sale.after, { goal, start: i }];
       if (window(goal, i).some((j) => shortfall(j, candidate) > 0)) break;
-      active.push({ goal, start: i });
-      savings = savings.subtract(goal.upfront());
+      active = candidate;
+      sales.set(goal.id, sale.outcomes);
+      savings = available.subtract(goal.upfront());
       next++;
     }
     const spending = spendingAt(i, active);
@@ -143,11 +196,16 @@ export function simulatePlan(input: PlanInput): PlanResult {
         monthlyCostAfterPayments: effect(false),
         alerts,
         levers: [],
+        tradeIns: sales.get(goal.id) ?? [],
       });
       return;
     }
     const blocked = index > next;
-    const base = active.filter((a) => a.start <= startIndex);
+    const base = sell(
+      goal,
+      startIndex,
+      active.filter((a) => a.start <= startIndex),
+    ).after;
     const gapCents = Math.max(
       0,
       ...window(goal, startIndex).map((j) => shortfall(j, [...base, { goal, start: startIndex }])),
@@ -160,6 +218,7 @@ export function simulatePlan(input: PlanInput): PlanResult {
       alerts,
       ...(gapCents > 0 ? { monthlyGap: Money.fromCents(gapCents) } : {}),
       levers: blocked || gapCents === 0 ? [] : levers(Money.fromCents(gapCents), baseline, goal),
+      tradeIns: [],
     });
   });
 

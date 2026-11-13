@@ -190,7 +190,9 @@ export function createFinappMcpServer(data: AssistantData, options: FinappMcpOpt
       description:
         'Metas na ordem de realização: custos (largada, parcelas, total), efeito no orçamento, quando cada uma cabe ' +
         'em cada cenário, o que falta e as alavancas (renda extra ou cortes) quando não cabe, e a renda mensal ' +
-        'estável necessária para realizar cada meta (renda-alvo), opcionalmente até um prazo.',
+        'estável necessária para realizar cada meta (renda-alvo), opcionalmente até um prazo. Traz os dados ' +
+        'completos de cada meta (para editar_meta) e, quando ela vende um bem na largada, o valor estimado da venda ' +
+        'em cada cenário, o saldo quitado e o líquido.',
       inputSchema: { prazo: MONTH.optional().describe('Realizar cada meta até este mês (AAAA-MM).') },
       annotations: readOnly,
     },

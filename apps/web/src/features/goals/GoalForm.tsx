@@ -4,7 +4,7 @@ import type { CategoryDirectory } from '../../lib/categories';
 import { formatCents } from '../../lib/format';
 import { centsToInput, parsePercent, parseReais } from '../../lib/money-input';
 import { goalCost } from './goal-cost';
-import { FINANCING_LABEL, GOAL_KIND_LABEL } from './goal-labels';
+import { ASSET_CATEGORY_LABEL, FINANCING_LABEL, GOAL_KIND_LABEL } from './goal-labels';
 
 interface CostRow {
   readonly key: number;
@@ -13,19 +13,43 @@ interface CostRow {
   replaces: string;
 }
 
+/** Bem vendido na largada: `source` é o id da meta dona do bem ou "owned" (um bem que a pessoa já tem). */
+interface TradeInRow {
+  readonly key: number;
+  source: string;
+  name: string;
+  value: string;
+  rate: string;
+}
+
+type CategoryKind = NonNullable<GoalDto['category']>['kind'];
+
 let rowKey = 0;
 const row = (name = '', amount = '', replaces = ''): CostRow => ({ key: ++rowKey, name, amount, replaces });
+const tradeInRow = (source: string, name = '', value = '', rate = ''): TradeInRow => ({
+  key: ++rowKey,
+  source,
+  name,
+  value,
+  rate,
+});
+const percentToInput = (rate: number) => String(+(rate * 100).toFixed(2)).replace('.', ',');
 
-/** Cadastro/edição de meta, com a parcela e o custo total calculados na hora. */
+/**
+ * Cadastro/edição de meta, com a parcela e o custo total calculados na hora. `sellable`: metas cujo bem esta
+ * pode vender na largada (de compra, antes na fila, que nenhuma outra vende).
+ */
 export function GoalForm({
   goal,
   categories,
+  sellable,
   onSubmit,
   onCancel,
   busy,
 }: {
   goal?: GoalDto;
   categories: CategoryDirectory;
+  sellable: readonly GoalDto[];
   onSubmit: (command: GoalCommand) => void;
   onCancel: () => void;
   busy: boolean;
@@ -48,6 +72,20 @@ export function GoalForm({
   );
   const [costs, setCosts] = useState<CostRow[]>(
     goal?.recurringCosts.map((c) => row(c.name, centsToInput(c.monthly.cents), c.replacesCategoryId ?? '')) ?? [],
+  );
+  const [category, setCategory] = useState<CategoryKind | ''>(goal?.category?.kind ?? '');
+  const [categoryName, setCategoryName] = useState(goal?.category?.label ?? '');
+  const [sales, setSales] = useState<TradeInRow[]>(
+    goal?.tradeIns.map((t) =>
+      t.source.kind === 'goal'
+        ? tradeInRow(t.source.goalId, '', '', percentToInput(t.annualDepreciationRate))
+        : tradeInRow(
+            'owned',
+            t.source.name,
+            centsToInput(t.source.currentValue.cents),
+            percentToInput(t.annualDepreciationRate),
+          ),
+    ) ?? [],
   );
   const [error, setError] = useState<string | undefined>();
 
@@ -80,6 +118,20 @@ export function GoalForm({
     if (parsed.some((c) => c.cents === undefined || !c.name.trim())) {
       return setError('Cada custo mensal precisa de nome e valor (use 0 quando só substitui um gasto).');
     }
+    const tradeIns = sales.map((t) => ({ ...t, parsedRate: parsePercent(t.rate), cents: parseReais(t.value) }));
+    const incomplete = tradeIns.some(
+      (t) =>
+        t.parsedRate === undefined ||
+        t.parsedRate >= 1 ||
+        (t.source === 'owned' && (!t.name.trim() || t.cents === undefined)),
+    );
+    if (incomplete) {
+      return setError(
+        'Em cada bem vendido, informe a desvalorização ao ano (de 0 a 99%) e, se for um bem que você já tem, o nome e o valor de hoje.',
+      );
+    }
+    const goalSources = tradeIns.filter((t) => t.source !== 'owned').map((t) => t.source);
+    if (new Set(goalSources).size !== goalSources.length) return setError('O mesmo bem aparece duas vezes na venda.');
     setError(undefined);
     onSubmit({
       name: name.trim(),
@@ -93,8 +145,25 @@ export function GoalForm({
         monthlyCents: c.cents ?? 0,
         ...(c.replaces ? { replacesCategoryId: c.replaces } : {}),
       })),
+      ...(kind === 'purchase' && category
+        ? {
+            category:
+              category === 'other' && categoryName.trim()
+                ? { kind: category, label: categoryName.trim() }
+                : { kind: category },
+          }
+        : {}),
+      tradeIns: tradeIns.map((t) => ({
+        source:
+          t.source === 'owned'
+            ? { kind: 'owned' as const, name: t.name.trim(), currentValueCents: t.cents ?? 0 }
+            : { kind: 'goal' as const, goalId: t.source },
+        annualDepreciationRate: t.parsedRate ?? 0,
+      })),
     });
   };
+  const updateSale = (key: number, change: Partial<TradeInRow>) =>
+    setSales((rows) => rows.map((r) => (r.key === key ? { ...r, ...change } : r)));
   const updateRow = (key: number, change: Partial<CostRow>) =>
     setCosts((rows) => rows.map((r) => (r.key === key ? { ...r, ...change } : r)));
 
@@ -115,6 +184,30 @@ export function GoalForm({
           ))}
         </select>
       </label>
+      {kind === 'purchase' && (
+        <label>
+          Categoria do bem
+          <select value={category} onChange={(e) => setCategory(e.target.value as CategoryKind | '')}>
+            <option value="">Sem categoria</option>
+            {Object.entries(ASSET_CATEGORY_LABEL).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {kind === 'purchase' && category === 'other' && (
+        <label>
+          Qual categoria?
+          <input
+            value={categoryName}
+            maxLength={40}
+            onChange={(e) => setCategoryName(e.target.value)}
+            placeholder="Opcional"
+          />
+        </label>
+      )}
       <label>
         Valor (R$)
         <input
@@ -216,6 +309,66 @@ export function GoalForm({
         ))}
         <button type="button" onClick={() => setCosts((rows) => [...rows, row()])}>
           Adicionar custo mensal
+        </button>
+      </fieldset>
+
+      <fieldset className="span-all">
+        <legend>Vender um bem para ajudar a pagar</legend>
+        <p className="hint">
+          O valor da venda entra no dinheiro para começar, já descontado o que o bem ainda deve, e ele sai do seu
+          orçamento. O plano estima esse valor no mês em que a meta começa, em cada cenário, com a desvalorização ao
+          ano. Dá para vender o bem de uma meta de compra que vem antes na fila ou um bem que você já tem.
+        </p>
+        {sales.map((t) => (
+          <div className="form-row trade-in-row" key={t.key}>
+            <select
+              aria-label="Bem vendido"
+              value={t.source}
+              onChange={(e) => updateSale(t.key, { source: e.target.value })}
+            >
+              {sellable.map((g) => (
+                <option key={g.id} value={g.id}>
+                  Bem da meta: {g.name}
+                </option>
+              ))}
+              <option value="owned">Um bem que já tenho</option>
+            </select>
+            {t.source === 'owned' && (
+              <>
+                <input
+                  aria-label="Nome do bem"
+                  value={t.name}
+                  maxLength={60}
+                  onChange={(e) => updateSale(t.key, { name: e.target.value })}
+                  placeholder="Ex.: notebook atual"
+                />
+                <input
+                  aria-label="Valor hoje (R$)"
+                  inputMode="decimal"
+                  value={t.value}
+                  onChange={(e) => updateSale(t.key, { value: e.target.value })}
+                  placeholder="Valor hoje (R$)"
+                />
+              </>
+            )}
+            <input
+              aria-label="Desvalorização ao ano (%)"
+              inputMode="decimal"
+              value={t.rate}
+              onChange={(e) => updateSale(t.key, { rate: e.target.value })}
+              placeholder="Perde % ao ano"
+            />
+            <button
+              type="button"
+              className="link"
+              onClick={() => setSales((rows) => rows.filter((r) => r.key !== t.key))}
+            >
+              Remover
+            </button>
+          </div>
+        ))}
+        <button type="button" onClick={() => setSales((rows) => [...rows, tradeInRow(sellable[0]?.id ?? 'owned')])}>
+          Adicionar bem vendido
         </button>
       </fieldset>
 

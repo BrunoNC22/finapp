@@ -293,6 +293,8 @@ export const GOALS: GoalDto[] = [
     oneTimeCosts: brl(30000),
     financing: { kind: 'interest_free', installments: 12 },
     recurringCosts: [{ name: 'manutenção', monthly: brl(8000), replacesCategoryId: 'alimentacao.delivery' }],
+    category: { kind: 'vehicle' },
+    tradeIns: [],
     upfront: brl(30000),
     installment: brl(27500),
     totalCost: brl(360000),
@@ -306,6 +308,7 @@ export const GOALS: GoalDto[] = [
     oneTimeCosts: brl(0),
     financing: { kind: 'cash' },
     recurringCosts: [],
+    tradeIns: [],
     upfront: brl(110000),
     installment: brl(0),
     totalCost: brl(110000),
@@ -328,6 +331,7 @@ export function aPlan(): GoalPlanDto {
     monthlyCostAfterPayments: brl(-1000),
     alerts: [],
     levers: [],
+    tradeIns: [],
     ...extra,
   });
   return {
