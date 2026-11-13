@@ -88,6 +88,25 @@ describe('PluggyClient', () => {
     expect(api.requests.filter((r) => r === 'POST /auth')).toHaveLength(2);
   });
 
+  it('renews the api key when an expired key is refused with 403 (as the real Pluggy does)', async () => {
+    const { api, provider } = make();
+    await provider.listConnections();
+    api.expireKey(403);
+
+    await expect(provider.listConnections()).resolves.toHaveLength(2);
+    expect(api.requests.filter((r) => r === 'POST /auth')).toHaveLength(2);
+  });
+
+  it('does not loop when a fresh key is also refused: the 403 surfaces with a safe message', async () => {
+    const { api, client } = make();
+    await client.get('/items/item-bank');
+    api.expireKey(403);
+    api.refuseNextKeys();
+
+    await expect(client.get('/items/item-bank')).rejects.toThrow('Pluggy respondeu 403 em /items/item-bank');
+    expect(api.requests.filter((r) => r === 'POST /auth')).toHaveLength(2);
+  });
+
   it('retries rate limits and server errors, then succeeds', async () => {
     const { api, provider } = make();
     api.failNext(429, 503);

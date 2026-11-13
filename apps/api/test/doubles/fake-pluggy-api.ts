@@ -15,6 +15,8 @@ export class FakePluggyApi {
   readonly clientId = 'fake-client';
   readonly clientSecret = 'fake-secret';
   private validKey = 'key-1';
+  private expiredKeyStatus = 401;
+  private refuseKeys = false;
   private keyCounter = 1;
   private failures: number[] = [];
   readonly pageSize = 2;
@@ -148,9 +150,17 @@ export class FakePluggyApi {
     },
   ];
 
-  /** Invalida a chave atual: a próxima requisição recebe 401. */
-  expireKey(): void {
+  /**
+   * Invalida a chave atual: a próxima requisição recebe 401 ou, como a Pluggy real faz com a chave vencida, 403.
+   */
+  expireKey(status: 401 | 403 = 401): void {
+    this.expiredKeyStatus = status;
     this.validKey = `revoked-${this.keyCounter}`;
+  }
+
+  /** As chaves emitidas daqui em diante também são recusadas (falta de permissão de verdade, não chave vencida). */
+  refuseNextKeys(): void {
+    this.refuseKeys = true;
   }
 
   /** As próximas respostas (de qualquer rota) falham com estes status, em ordem. */
@@ -168,10 +178,12 @@ export class FakePluggyApi {
       const body = JSON.parse(String(init.body)) as { clientId: string; clientSecret: string };
       if (body.clientId !== this.clientId || body.clientSecret !== this.clientSecret)
         return json({ message: 'unauthorized' }, 401);
-      this.validKey = `key-${++this.keyCounter}`;
-      return json({ apiKey: this.validKey });
+      const key = `key-${++this.keyCounter}`;
+      if (!this.refuseKeys) this.validKey = key;
+      return json({ apiKey: key });
     }
-    if (new Headers(init?.headers).get('X-API-KEY') !== this.validKey) return json({ message: 'unauthorized' }, 401);
+    if (new Headers(init?.headers).get('X-API-KEY') !== this.validKey)
+      return json({ message: 'unauthorized' }, this.expiredKeyStatus);
 
     const item = /^\/items\/([^/]+)$/.exec(pathname);
     if (item) return this.found(this.items.find((i) => i.id === item[1]));

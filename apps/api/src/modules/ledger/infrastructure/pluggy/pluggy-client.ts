@@ -23,7 +23,8 @@ export interface PluggyClientOptions {
 
 /**
  * Cliente HTTP mínimo da API da Pluggy.
- * - Autentica sob demanda e reaproveita a chave; renova uma vez ao receber 401 (a validade não é documentada).
+ * - Autentica sob demanda e reaproveita a chave; renova uma vez ao receber 401 ou 403. A validade não é documentada
+ *   e, na prática, a chave vencida volta como 403 (não 401): sem renovar, a sincronização ficava presa até reiniciar.
  * - Repete 429/5xx e falhas de rede com espera exponencial.
  * - Mensagens de erro sem query string, sem corpo e sem segredos.
  */
@@ -46,7 +47,7 @@ export class PluggyClient {
   async get<T>(path: string): Promise<T> {
     this.apiKey ??= await this.authenticate();
     let response = await this.request(path, { headers: { 'X-API-KEY': this.apiKey } });
-    if (response.status === 401) {
+    if (response.status === 401 || response.status === 403) {
       this.apiKey = await this.authenticate();
       response = await this.request(path, { headers: { 'X-API-KEY': this.apiKey } });
     }
