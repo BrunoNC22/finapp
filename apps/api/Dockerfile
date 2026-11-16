@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Build a partir da raiz do monorepo: docker build -f apps/api/Dockerfile .
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 WORKDIR /repo
 RUN corepack enable
@@ -14,7 +14,7 @@ RUN pnpm --filter @finapp/contracts build \
  && pnpm --filter api build \
  && pnpm --filter api deploy --prod --ignore-scripts /out
 
-FROM node:24-alpine AS runtime
+FROM node:26-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build --chown=node:node /out/package.json ./
