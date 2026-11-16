@@ -13,10 +13,10 @@ jobs:
     name: Varredura de segredos e dados pessoais
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
@@ -30,9 +30,9 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - run: uname -r
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -47,7 +47,7 @@ jobs:
     name: Imagens Docker e compose do demo
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: docker build -f apps/api/Dockerfile -t finapp-api:ci .
       - run: docker build -f apps/web/Dockerfile -t finapp-web:ci .
       - run: docker compose -f compose.demo.yaml config --quiet
