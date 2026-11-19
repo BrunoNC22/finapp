@@ -12,9 +12,11 @@ import { Amount } from '../shared/Amount';
 import { QueryState } from '../shared/QueryState';
 import { financeKeys, useAccountNames, useAccounts, useCategories } from '../shared/queries';
 import { filtersFromParams, filtersToParams, type TransactionFilters, toSearch } from './filters';
+import { TransferPairPicker } from './TransferPairPicker';
 import { CLASSIFICATION_LABEL, explain, PAYMENT_METHOD_LABEL, paymentBadge } from './transaction-labels';
 
 const PAGE_SIZE = 50;
+type Classification = TransactionDto['classification'];
 
 /** Todas as transações de todas as contas, com filtros na URL e categoria editável na própria linha. */
 export function TransactionsPage() {
@@ -230,6 +232,7 @@ function TransactionRow({
   const queryClient = useQueryClient();
   const [editingCategory, setEditingCategory] = useState(false);
   const [open, setOpen] = useState(false);
+  const [pairing, setPairing] = useState(false);
   const refresh = () => void queryClient.invalidateQueries({ queryKey: financeKeys.all });
   const categorize = useMutation({
     mutationFn: (categoryId: string) => finance.categorize(t.id, categoryId),
@@ -243,9 +246,21 @@ function TransactionRow({
     },
   });
   const classify = useMutation({
-    mutationFn: (classification: TransactionDto['classification']) => finance.classify(t.id, classification),
-    onSuccess: refresh,
+    mutationFn: ({ classification, counterpartId }: { classification: Classification; counterpartId?: string }) =>
+      finance.classify(t.id, classification, counterpartId),
+    onSuccess: () => {
+      setPairing(false);
+      refresh();
+    },
   });
+  const changeClassification = (classification: Classification) => {
+    // Transferência entre contas: primeiro a pessoa escolhe a outra ponta.
+    if (classification === 'internal_transfer') setPairing(true);
+    else {
+      setPairing(false);
+      classify.mutate({ classification });
+    }
+  };
   const badge = paymentBadge(t);
   const detailId = `tx-detail-${t.id}`;
 
@@ -323,8 +338,8 @@ function TransactionRow({
           <label className="inline-field">
             Contar como
             <select
-              value={t.classification}
-              onChange={(e) => classify.mutate(e.target.value as TransactionDto['classification'])}
+              value={pairing ? 'internal_transfer' : t.classification}
+              onChange={(e) => changeClassification(e.target.value as Classification)}
               disabled={classify.isPending}
             >
               <option value="expense">
@@ -332,11 +347,25 @@ function TransactionRow({
               </option>
               <option value="income">{CLASSIFICATION_LABEL.income}</option>
               <option value="ignored">{CLASSIFICATION_LABEL.ignored}</option>
-              {t.classification === 'internal_transfer' && (
-                <option value="internal_transfer">{CLASSIFICATION_LABEL.internal_transfer}</option>
-              )}
+              <option value="internal_transfer">
+                {CLASSIFICATION_LABEL.internal_transfer}
+                {t.classification === 'internal_transfer' || pairing ? '' : '…'}
+              </option>
             </select>
           </label>
+          {pairing && (
+            <TransferPairPicker
+              transaction={t}
+              busy={classify.isPending}
+              onPick={(counterpartId) =>
+                classify.mutate({
+                  classification: 'internal_transfer',
+                  ...(counterpartId ? { counterpartId } : {}),
+                })
+              }
+              onCancel={() => setPairing(false)}
+            />
+          )}
           {classify.isError && <p className="error">Não foi possível salvar.</p>}
         </div>
       )}

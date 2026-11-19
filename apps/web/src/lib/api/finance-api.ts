@@ -38,7 +38,12 @@ export interface FinanceApi {
   monthlyReport(month: string): Promise<MonthlyReportDto>;
   transactions(search: TransactionSearch): Promise<TransactionPageDto>;
   categorize(transactionId: string, categoryId: string): Promise<TransactionDto>;
-  classify(transactionId: string, classification: TransactionDto['classification']): Promise<TransactionDto>;
+  /** `counterpartId`: a outra ponta de uma transferência entre contas (as duas ficam ligadas). */
+  classify(
+    transactionId: string,
+    classification: TransactionDto['classification'],
+    counterpartId?: string,
+  ): Promise<TransactionDto>;
 
   // Regras e categorias (as mudanças de regra são reaplicadas aos últimos 12 meses)
   rules(): Promise<CategorizationRuleDto[]>;

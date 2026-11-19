@@ -3,7 +3,7 @@ import { LocalDate } from '../../../../shared/kernel/local-date.js';
 import { foldText } from '../../domain/categorization/categorization-rule.js';
 import { Category, type CategoryKind, InvalidCategoryError } from '../../domain/categorization/category.js';
 import { InstallmentGrouper, type InstallmentPurchase } from '../../domain/services/installment-grouper.js';
-import type { Classification } from '../../domain/transaction.js';
+import { type Classification, InvalidTransactionError, type Transaction } from '../../domain/transaction.js';
 import type { CategoryRepository } from '../ports/category-repository.js';
 import type { TransactionRepository } from '../ports/transaction-repository.js';
 import { UnknownCategoryError, UnknownTransactionError } from './categorization.js';
@@ -21,24 +21,34 @@ export class ClassifyTransactionManually {
     counterpartId?: string;
   }): Promise<void> {
     const transaction = await this.require(input.transactionId);
-    const previousLink = transaction.transferLink;
-    const changed = [transaction];
+    const changed: Transaction[] = [];
 
     if (input.classification === 'internal_transfer' && input.counterpartId) {
       const counterpart = await this.require(input.counterpartId);
+      if (counterpart.accountId === transaction.accountId) {
+        throw new InvalidTransactionError('uma transferência interna liga transações de contas diferentes');
+      }
+      // A outra ponta pode estar ligada a uma terceira transação: o par antigo é desfeito.
+      await this.releaseOldPair(counterpart, transaction.id, changed);
       counterpart.classifyManually('internal_transfer', transaction.id);
       changed.push(counterpart);
     }
+    const newLink = input.classification === 'internal_transfer' ? input.counterpartId : undefined;
+    await this.releaseOldPair(transaction, newLink, changed);
     transaction.classifyManually(input.classification, input.counterpartId);
-
-    if (previousLink && previousLink !== transaction.transferLink) {
-      const released = await this.transactions.findById(previousLink);
-      if (released?.transferLink === transaction.id) {
-        released.releaseTransfer();
-        changed.push(released);
-      }
-    }
+    changed.push(transaction);
     await this.transactions.saveMany(changed);
+  }
+
+  /** Libera a antiga outra ponta de `side`, se ela ainda apontar para `side` e não for `keep`. */
+  private async releaseOldPair(side: Transaction, keep: string | undefined, changed: Transaction[]): Promise<void> {
+    const oldLink = side.transferLink;
+    if (!oldLink || oldLink === keep) return;
+    const released = await this.transactions.findById(oldLink);
+    if (released?.transferLink === side.id) {
+      released.releaseTransfer();
+      changed.push(released);
+    }
   }
 
   private async require(id: string) {

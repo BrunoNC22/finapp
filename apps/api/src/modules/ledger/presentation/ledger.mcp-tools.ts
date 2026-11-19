@@ -88,7 +88,8 @@ export class LedgerMcpTools implements McpToolProvider {
         title: 'Classificar transação',
         description:
           'Muda o tipo: expense (gasto), income (renda), internal_transfer (entre as próprias contas; informe a outra ' +
-          'ponta em counterpartId para ligar as duas) ou ignored (não conta em nada).',
+          'ponta, de outra conta, em counterpartId para ligar as duas; um par antigo de qualquer das pontas é ' +
+          'desfeito) ou ignored (não conta em nada).',
         input: { transactionId: id('da transação'), ...ClassifyCommandSchema.shape },
         access: 'escrita',
         idempotent: true,

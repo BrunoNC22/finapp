@@ -9,6 +9,7 @@ import { InMemoryTransactionRepository } from '../../../../../test/doubles/in-me
 import { Money } from '../../../../shared/kernel/money.js';
 import { InvalidCategoryError } from '../../domain/categorization/category.js';
 import { Installment } from '../../domain/installment.js';
+import { InvalidTransactionError } from '../../domain/transaction.js';
 import { SeedDefaultCategorization, UnknownCategoryError, UnknownTransactionError } from './categorization.js';
 import {
   ClassifyTransactionManually,
@@ -60,6 +61,39 @@ describe('ClassifyTransactionManually', () => {
       'income',
       'default',
     ]);
+  });
+
+  it('pairing with a side that had another pair releases that old pair, so no link is left dangling', async () => {
+    const out = aTransaction().withId('out').withAccount('a').withAmount(-5000).withPaymentMethod('pix').build();
+    const wrong = aTransaction().withId('wrong').withAccount('b').withAmount(-5000).withPaymentMethod('pix').build();
+    const into = aTransaction().withId('in').withAccount('c').withAmount(5000).withPaymentMethod('pix').build();
+    wrong.markAsInternalTransfer('in');
+    into.markAsInternalTransfer('wrong');
+    await transactions.saveMany([out, wrong, into]);
+
+    await new ClassifyTransactionManually(transactions).execute({
+      transactionId: 'out',
+      classification: 'internal_transfer',
+      counterpartId: 'in',
+    });
+
+    const released = await transactions.findById('wrong');
+    expect([released?.transferLink, released?.classification]).toEqual([undefined, 'expense']);
+    expect((await transactions.findById('in'))?.transferLink).toBe('out');
+  });
+
+  it('a transfer is between two different accounts', async () => {
+    await transactions.saveMany([
+      aTransaction().withId('x').withAccount('a').withAmount(-5000).build(),
+      aTransaction().withId('y').withAccount('a').withAmount(5000).build(),
+    ]);
+    await expect(
+      new ClassifyTransactionManually(transactions).execute({
+        transactionId: 'x',
+        classification: 'internal_transfer',
+        counterpartId: 'y',
+      }),
+    ).rejects.toThrow(InvalidTransactionError);
   });
 
   it('rejects unknown transactions and counterparts', async () => {

@@ -538,9 +538,14 @@ export class FakeFinanceApi implements FinanceApi {
     return updated;
   }
 
-  async classify(id: string, classification: TransactionDto['classification']) {
-    this.calls.push(`classify:${id}:${classification}`);
-    const updated = { ...this.find(id), classification, classificationSource: 'manual' as const };
+  async classify(id: string, classification: TransactionDto['classification'], counterpartId?: string) {
+    this.calls.push(`classify:${id}:${classification}${counterpartId ? `:${counterpartId}` : ''}`);
+    const updated: TransactionDto = {
+      ...this.find(id),
+      classification,
+      classificationSource: 'manual' as const,
+      ...(counterpartId ? { transferLinkId: counterpartId } : {}),
+    };
     this.replace(updated);
     return updated;
   }

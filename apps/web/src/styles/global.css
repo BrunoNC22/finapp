@@ -1164,3 +1164,42 @@ label.check {
   gap: 4px;
   font-weight: 600;
 }
+
+/* Conciliação manual: escolher a outra ponta de uma transferência (#20) */
+.pair-picker {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius-md);
+}
+.pair-picker legend {
+  font-weight: 600;
+  padding: 0 var(--space-1);
+}
+.pair-picker p {
+  margin: 0;
+}
+.pair-candidates {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.pair-candidates button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: left;
+}
+.pair-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}

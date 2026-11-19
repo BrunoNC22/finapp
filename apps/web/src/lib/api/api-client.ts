@@ -174,12 +174,12 @@ export class ApiClient implements AuthApi, FinanceApi {
   updateCategory(id: string, command: UpdateCategoryCommand) {
     return this.request('PATCH', `/categories/${encodeURIComponent(id)}`, CategorySchema, command);
   }
-  classify(transactionId: string, classification: TransactionDto['classification']) {
+  classify(transactionId: string, classification: TransactionDto['classification'], counterpartId?: string) {
     return this.request(
       'PATCH',
       `/transactions/${encodeURIComponent(transactionId)}/classification`,
       TransactionSchema,
-      { classification },
+      counterpartId ? { classification, counterpartId } : { classification },
     );
   }
   installments() {
